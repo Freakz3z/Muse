@@ -44,26 +44,28 @@ export default function Layout() {
           <span className="text-sm font-semibold text-gray-700">Muse</span>
         </div>
         
-        <div className="flex items-center gap-1 no-drag">
-          <button
-            onClick={handleMinimize}
-            className="p-2 hover:bg-gray-100 rounded transition-colors"
-          >
-            <Minus className="w-4 h-4 text-gray-500" />
-          </button>
-          <button
-            onClick={handleMaximize}
-            className="p-2 hover:bg-gray-100 rounded transition-colors"
-          >
-            <Square className="w-3.5 h-3.5 text-gray-500" />
-          </button>
-          <button
-            onClick={handleClose}
-            className="p-2 hover:bg-red-500 hover:text-white rounded transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+        {window.electronAPI && (
+          <div className="flex items-center gap-1 no-drag">
+            <button
+              onClick={handleMinimize}
+              className="p-2 hover:bg-gray-100 rounded transition-colors"
+            >
+              <Minus className="w-4 h-4 text-gray-500" />
+            </button>
+            <button
+              onClick={handleMaximize}
+              className="p-2 hover:bg-gray-100 rounded transition-colors"
+            >
+              <Square className="w-3.5 h-3.5 text-gray-500" />
+            </button>
+            <button
+              onClick={handleClose}
+              className="p-2 hover:bg-red-500 hover:text-white rounded transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
       </header>
 
       <div className="flex-1 flex overflow-hidden">

@@ -4,11 +4,12 @@
   "description": "Muse - AI-Driven Intelligent English Vocabulary Learning Assistant",
   "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build && electron-builder",
+    "dev": "vite --mode electron",
+    "build": "tsc && vite build --mode electron && electron-builder",
+    "build:web": "tsc && vite build",
     "preview": "vite preview",
-    "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
-    "electron:build": "vite build && electron-builder"
+    "electron:dev": "concurrently \"vite --mode electron\" \"wait-on http://localhost:5173 && electron .\"",
+    "electron:build": "vite build --mode electron && electron-builder"
   },
   "dependencies": {
     "react": "^18.2.0",
