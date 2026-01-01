@@ -29,15 +29,15 @@ export default function WordBookPage() {
   const [newBookDesc, setNewBookDesc] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   
-  // 加载状态
-  const [loadingBookId, setLoadingBookId] = useState<string | null>(null)
-  const [loadProgress, setLoadProgress] = useState({ current: 0, total: 0 })
+  // 后台下载管理
+  const [backgroundTasks, setBackgroundTasks] = useState<Map<string, { current: number; total: number }>>(new Map())
   
-  // 加载词库单词
+  // 加载词库单词（后台运行）
   const handleLoadBook = useCallback(async (bookId: string) => {
-    setLoadingBookId(bookId)
-    setLoadProgress({ current: 0, total: 0 })
+    // 立即标记为后台任务
+    setBackgroundTasks(prev => new Map(prev).set(bookId, { current: 0, total: 0 }))
     
+    // 异步后台加载
     try {
       const wordIds = await initializeWordBook(
         bookId,
@@ -45,7 +45,9 @@ export default function WordBookPage() {
           save: wordStorage.save.bind(wordStorage), 
           getAll: wordStorage.getAll.bind(wordStorage) 
         },
-        (current, total) => setLoadProgress({ current, total })
+        (current, total) => {
+          setBackgroundTasks(prev => new Map(prev).set(bookId, { current, total }))
+        }
       )
       
       // 更新词库的wordIds
@@ -59,8 +61,12 @@ export default function WordBookPage() {
     } catch (error) {
       console.error('加载词库失败:', error)
     } finally {
-      setLoadingBookId(null)
-      setLoadProgress({ current: 0, total: 0 })
+      // 完成后从后台任务列表移除
+      setBackgroundTasks(prev => {
+        const next = new Map(prev)
+        next.delete(bookId)
+        return next
+      })
     }
   }, [books, loadBooks, loadWords])
   
@@ -103,6 +109,9 @@ export default function WordBookPage() {
   const builtinBooks = filteredBooks.filter(b => b.category === 'builtin')
   const customBooks = filteredBooks.filter(b => b.category === 'custom')
 
+  // 检查是否有后台任务
+  const hasBackgroundTasks = backgroundTasks.size > 0
+
   return (
     <div className="max-w-4xl mx-auto">
       {/* 头部 */}
@@ -143,6 +152,45 @@ export default function WordBookPage() {
         />
       </div>
 
+      {/* 后台下载任务提示 */}
+      {hasBackgroundTasks && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6"
+        >
+          <div className="flex items-start gap-3">
+            <Loader2 className="w-5 h-5 text-blue-500 animate-spin flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <h4 className="font-medium text-blue-900 mb-1">后台下载进行中</h4>
+              <p className="text-blue-700 text-sm mb-3">
+                {backgroundTasks.size} 个词库正在后台下载，您可以继续浏览其他页面
+              </p>
+              <div className="space-y-2">
+                {Array.from(backgroundTasks.entries()).map(([bookId, progress]) => {
+                  const book = books.find(b => b.id === bookId)
+                  return (
+                    <div key={bookId} className="flex items-center gap-3">
+                      <span className="text-sm text-blue-700 min-w-[100px] truncate">{book?.name}</span>
+                      <div className="flex-1 h-1.5 bg-blue-200 rounded-full overflow-hidden">
+                        <motion.div
+                          className="h-full bg-blue-500"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-blue-600 min-w-[60px] text-right">
+                        {progress.total > 0 ? `${progress.current}/${progress.total}` : '准备中...'}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      )}
+
       {/* 内置词库 */}
       {builtinBooks.length > 0 && (
         <div className="mb-8">
@@ -159,8 +207,8 @@ export default function WordBookPage() {
                 isSelected={currentBook?.id === book.id}
                 onSelect={() => selectBook(book.id)}
                 needsLoading={needsLoading(book)}
-                isLoading={loadingBookId === book.id}
-                loadProgress={loadingBookId === book.id ? loadProgress : undefined}
+                isLoading={backgroundTasks.has(book.id)}
+                loadProgress={backgroundTasks.get(book.id)}
                 onLoad={() => handleLoadBook(book.id)}
                 presetCount={getPresetCount(book)}
               />
@@ -316,7 +364,7 @@ function WordBookCard({
             <div className="mt-3">
               <div className="flex items-center gap-2 text-blue-500 text-sm mb-1">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                正在从API加载词汇...
+                后台下载中...
               </div>
               {loadProgress && loadProgress.total > 0 && (
                 <>
