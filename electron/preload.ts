@@ -4,8 +4,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   minimize: () => ipcRenderer.send('window-minimize'),
   maximize: () => ipcRenderer.send('window-maximize'),
   close: () => ipcRenderer.send('window-close'),
-  openFloating: () => ipcRenderer.send('open-floating'),
-  closeFloating: () => ipcRenderer.send('close-floating'),
   getWindowState: () => ipcRenderer.invoke('get-window-state'),
   onMaximizeChange: (callback: (isMaximized: boolean) => void) => {
     ipcRenderer.on('maximize-change', (_, isMaximized) => callback(isMaximized))

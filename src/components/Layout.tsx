@@ -10,7 +10,6 @@ import {
   Minus,
   Square,
   X,
-  Layers,
   Brain,
   Sparkles
 } from 'lucide-react'
@@ -33,7 +32,6 @@ export default function Layout() {
   const handleMinimize = () => window.electronAPI?.minimize()
   const handleMaximize = () => window.electronAPI?.maximize()
   const handleClose = () => window.electronAPI?.close()
-  const handleOpenFloating = () => window.electronAPI?.openFloating()
 
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 to-blue-50">
@@ -47,13 +45,6 @@ export default function Layout() {
         </div>
         
         <div className="flex items-center gap-1 no-drag">
-          <button
-            onClick={handleOpenFloating}
-            className="p-2 hover:bg-gray-100 rounded transition-colors"
-            title="悬浮窗"
-          >
-            <Layers className="w-4 h-4 text-gray-500" />
-          </button>
           <button
             onClick={handleMinimize}
             className="p-2 hover:bg-gray-100 rounded transition-colors"

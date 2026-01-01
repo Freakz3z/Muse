@@ -6,8 +6,6 @@ declare global {
       minimize: () => void
       maximize: () => void
       close: () => void
-      openFloating: () => void
-      closeFloating: () => void
       getWindowState: () => Promise<{ isMaximized: boolean }>
       onMaximizeChange: (callback: (isMaximized: boolean) => void) => void
       // 剪贴板翻译

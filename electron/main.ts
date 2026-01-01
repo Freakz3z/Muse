@@ -3,7 +3,6 @@ import path from 'path'
 
 let mainWindow: BrowserWindow | null = null
 let tray: Tray | null = null
-let floatingWindow: BrowserWindow | null = null
 
 const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 
@@ -36,38 +35,6 @@ function createWindow() {
   })
 }
 
-function createFloatingWindow() {
-  if (floatingWindow) {
-    floatingWindow.show()
-    return
-  }
-
-  floatingWindow = new BrowserWindow({
-    width: 350,
-    height: 200,
-    frame: false,
-    transparent: true,
-    alwaysOnTop: true,
-    skipTaskbar: true,
-    resizable: false,
-    webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-    },
-  })
-
-  if (VITE_DEV_SERVER_URL) {
-    floatingWindow.loadURL(`${VITE_DEV_SERVER_URL}#/floating`)
-  } else {
-    floatingWindow.loadFile(path.join(__dirname, '../dist/index.html'), { hash: '/floating' })
-  }
-
-  floatingWindow.on('closed', () => {
-    floatingWindow = null
-  })
-}
-
 function createTray() {
   const icon = nativeImage.createFromPath(path.join(__dirname, '../public/icon.ico'))
   tray = new Tray(icon.resize({ width: 16, height: 16 }))
@@ -76,10 +43,6 @@ function createTray() {
     { 
       label: '打开主界面', 
       click: () => mainWindow?.show() 
-    },
-    { 
-      label: '悬浮窗', 
-      click: () => createFloatingWindow() 
     },
     {
       label: '划词翻译',
@@ -90,7 +53,6 @@ function createTray() {
       label: '退出', 
       click: () => {
         mainWindow?.destroy()
-        floatingWindow?.destroy()
         app.quit()
       } 
     }
@@ -146,8 +108,6 @@ ipcMain.on('window-maximize', () => {
   }
 })
 ipcMain.on('window-close', () => mainWindow?.hide())
-ipcMain.on('open-floating', () => createFloatingWindow())
-ipcMain.on('close-floating', () => floatingWindow?.close())
 
 ipcMain.handle('get-window-state', () => ({
   isMaximized: mainWindow?.isMaximized() ?? false,

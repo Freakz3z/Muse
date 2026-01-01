@@ -35,7 +35,6 @@ A desktop English vocabulary learning application built with Electron + React + 
 - **Word Quizzes** - Multiple choice and spelling quiz modes
 - **Learning Statistics** - Visual progress tracking, accuracy rates, and learning curves
 - **Vocabulary Books** - Built-in word lists + JSON import for custom vocabularies
-- **Floating Window** - Desktop mini-window for quick reviews
 
 ### 🤖 AI-Powered Features
 - **AI Example Sentences** - Generate authentic, practical example sentences with Chinese translations

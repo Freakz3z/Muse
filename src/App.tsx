@@ -9,7 +9,6 @@ import Quiz from './pages/Quiz'
 import WordBook from './pages/WordBook'
 import Statistics from './pages/Statistics'
 import Settings from './pages/Settings'
-import FloatingCard from './pages/FloatingCard'
 import TranslationPopup from './components/TranslationPopup'
 import AIQuiz from './pages/AIQuiz'
 import AICoach from './pages/AICoach'
@@ -58,7 +57,6 @@ function App() {
   return (
     <>
       <Routes>
-        <Route path="/floating" element={<FloatingCard />} />
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
           <Route path="learn" element={<Learn />} />
