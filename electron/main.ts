@@ -58,7 +58,7 @@ function createTray() {
     }
   ])
   
-  tray.setToolTip('Muse 英语学习助手')
+  tray.setToolTip('Muse')
   tray.setContextMenu(contextMenu)
   
   tray.on('double-click', () => {

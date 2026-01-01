@@ -41,7 +41,7 @@ export default function Layout() {
           <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
             <span className="text-white text-xs font-bold">M</span>
           </div>
-          <span className="text-sm font-semibold text-gray-700">Muse 英语学习助手</span>
+          <span className="text-sm font-semibold text-gray-700">Muse</span>
         </div>
         
         <div className="flex items-center gap-1 no-drag">

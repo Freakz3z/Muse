@@ -1,7 +1,7 @@
 {
   "name": "muse-english",
-  "version": "1.0.0",
-  "description": "Muse 英语单词学习助手 - 轻量级桌面应用",
+  "version": "1.1.0",
+  "description": "Muse - AI-Powered English Vocabulary Learning Assistant",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
@@ -38,7 +38,7 @@
   },
   "build": {
     "appId": "com.muse.english",
-    "productName": "Muse英语学习助手",
+    "productName": "Muse",
     "directories": {
       "output": "release"
     },

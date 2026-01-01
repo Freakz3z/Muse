@@ -558,8 +558,8 @@ export default function Settings() {
       <div className="bg-white rounded-xl p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">关于</h2>
         <div className="space-y-2 text-gray-600">
-          <p>Muse 英语学习助手 v1.0.0</p>
-          <p className="text-sm text-gray-400">基于艾宾浩斯记忆曲线的智能单词学习应用</p>
+          <p>Muse v1.1.0</p>
+          <p className="text-sm text-gray-400">AI-Powered English Vocabulary Learning</p>
         </div>
       </div>
     </div>
