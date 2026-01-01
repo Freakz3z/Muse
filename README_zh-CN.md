@@ -42,7 +42,7 @@
 - **AI 记忆技巧** - 智能生成联想记忆、词根分析等记忆技巧
 - **AI 智能测验** - AI 根据词库自动生成个性化测验题目
 - **AI 学习教练** - 分析学习数据，提供个性化学习建议和每日计划
-- **剪贴板翻译** - 快捷键唤起 AI 翻译弹窗
+- **单词搜索** - 搜索任意单词并获取 AI 深度分析
 
 ### 🎯 支持的 AI 服务
 - **OpenAI** - GPT-4o-mini, GPT-4o 等模型
@@ -110,7 +110,6 @@ Muse_Electron/
 │   ├── components/       # 通用组件
 │   │   ├── AIAssistant.tsx    # AI 助手组件
 │   │   ├── WordCard.tsx       # 单词卡片
-│   │   ├── TranslationPopup.tsx # 翻译弹窗
 │   │   └── ...
 │   ├── pages/            # 页面组件
 │   │   ├── Home.tsx      # 首页

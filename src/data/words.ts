@@ -307,7 +307,11 @@ export async function initializeWordBook(
   
   // 过滤出需要获取的新单词
   const newWords = wordList.filter(w => !existingWordSet.has(w.toLowerCase()));
-  const total = newWords.length;
+  const total = wordList.length; // 使用总词数而不是新词数
+  const existingCount = wordList.length - newWords.length; // 已存在的词数
+  
+  // 立即报告初始进度（已存在的词）
+  onProgress?.(existingCount, total);
   
   for (let i = 0; i < newWords.length; i++) {
     const word = newWords[i];
@@ -317,7 +321,8 @@ export async function initializeWordBook(
         await wordStorage.save(wordData);
         wordIds.push(wordData.id);
       }
-      onProgress?.(i + 1, total);
+      // 报告当前进度 = 已存在的词数 + 当前下载的词数
+      onProgress?.(existingCount + i + 1, total);
       // 添加延迟避免API限流
       if (i < newWords.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 100));

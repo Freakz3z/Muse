@@ -42,7 +42,7 @@ A desktop English vocabulary learning application built with Electron + React + 
 - **AI Memory Tips** - Intelligent generation of mnemonics, etymology analysis, and memory tricks
 - **AI Smart Quiz** - AI generates personalized quiz questions based on your vocabulary
 - **AI Learning Coach** - Analyzes your learning data to provide personalized suggestions and daily plans
-- **Clipboard Translation** - Hotkey-activated AI translation popup
+- **Word Search** - Search any word and get AI-powered detailed analysis
 
 ### 🎯 Supported AI Services
 | Provider | Models | API Key Required |
@@ -118,8 +118,7 @@ Muse_Electron/
 ├── src/
 │   ├── components/       # Reusable components
 │   │   ├── AIAssistant.tsx    # AI assistant component
-│   │   ├── WordCard.tsx       # Word flashcard
-│   │   └── TranslationPopup.tsx # Translation popup
+│   │   └── WordCard.tsx       # Word flashcard
 │   ├── pages/            # Page components
 │   │   ├── Home.tsx      # Dashboard
 │   │   ├── Learn.tsx     # Learning page

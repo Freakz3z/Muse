@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage, clipboard } from 'electron'
+import { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage } from 'electron'
 import path from 'path'
 
 let mainWindow: BrowserWindow | null = null
@@ -44,10 +44,6 @@ function createTray() {
       label: '打开主界面', 
       click: () => mainWindow?.show() 
     },
-    {
-      label: '划词翻译',
-      click: () => triggerClipboardTranslation()
-    },
     { type: 'separator' },
     { 
       label: '退出', 
@@ -66,19 +62,6 @@ function createTray() {
   })
 }
 
-// 触发剪贴板翻译
-function triggerClipboardTranslation() {
-  const text = clipboard.readText()
-  if (text && text.trim()) {
-    // 确保主窗口可见
-    if (!mainWindow?.isVisible()) {
-      mainWindow?.show()
-    }
-    // 发送剪贴板内容到渲染进程
-    mainWindow?.webContents.send('clipboard-translate', text.trim())
-  }
-}
-
 app.whenReady().then(() => {
   createWindow()
   createTray()
@@ -90,11 +73,6 @@ app.whenReady().then(() => {
     } else {
       mainWindow?.show()
     }
-  })
-
-  // 全局快捷键：Ctrl+Shift+T 划词翻译
-  globalShortcut.register('CommandOrControl+Shift+T', () => {
-    triggerClipboardTranslation()
   })
 })
 

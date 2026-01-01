@@ -13,11 +13,13 @@ import {
   Download,
   Loader2,
   Cloud,
-  CheckCircle2
+  CheckCircle2,
+  Eye
 } from 'lucide-react'
 import { useAppStore } from '../store'
 import { WordBook } from '../types'
 import ImportModal from '../components/ImportModal'
+import WordListModal from '../components/WordListModal'
 import { initializeWordBook, presetWordLists } from '../data/words'
 import { wordStorage, bookStorage } from '../storage'
 
@@ -25,6 +27,8 @@ export default function WordBookPage() {
   const { books, currentBook, selectBook, createBook, loadWords, loadBooks } = useAppStore()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
+  const [showWordList, setShowWordList] = useState(false)
+  const [viewingBook, setViewingBook] = useState<WordBook | null>(null)
   const [newBookName, setNewBookName] = useState('')
   const [newBookDesc, setNewBookDesc] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -50,13 +54,20 @@ export default function WordBookPage() {
         }
       )
       
-      // 更新词库的wordIds
-      const book = books.find(b => b.id === bookId)
+      // 获取最新的词库列表
+      const allBooks = await bookStorage.getAll()
+      const book = allBooks.find(b => b.id === bookId)
+      
       if (book && wordIds.length > 0) {
         const updatedBook = { ...book, wordIds, wordCount: wordIds.length }
         await bookStorage.save(updatedBook)
+        // 重新加载数据
         await loadBooks()
         await loadWords()
+        // 如果当前选中的就是这个词库，重新选择它以刷新状态
+        if (currentBook?.id === bookId) {
+          await selectBook(bookId)
+        }
       }
     } catch (error) {
       console.error('加载词库失败:', error)
@@ -68,7 +79,7 @@ export default function WordBookPage() {
         return next
       })
     }
-  }, [books, loadBooks, loadWords])
+  }, [loadBooks, loadWords])
   
   // 检查词库是否需要加载（未下载或未完成）
   const needsLoading = (book: WordBook) => {
@@ -210,6 +221,10 @@ export default function WordBookPage() {
                 isLoading={backgroundTasks.has(book.id)}
                 loadProgress={backgroundTasks.get(book.id)}
                 onLoad={() => handleLoadBook(book.id)}
+                onViewWords={() => {
+                  setViewingBook(book)
+                  setShowWordList(true)
+                }}
                 presetCount={getPresetCount(book)}
               />
             ))}
@@ -229,6 +244,10 @@ export default function WordBookPage() {
                 isSelected={currentBook?.id === book.id}
                 onSelect={() => selectBook(book.id)}
                 canDelete
+                onViewWords={() => {
+                  setViewingBook(book)
+                  setShowWordList(true)
+                }}
               />
             ))}
           </div>
@@ -296,6 +315,16 @@ export default function WordBookPage() {
 
       {/* 导入词库弹窗 */}
       <ImportModal isOpen={showImportModal} onClose={() => setShowImportModal(false)} />
+
+      {/* 查看词库单词列表弹窗 */}
+      <WordListModal 
+        isOpen={showWordList} 
+        onClose={() => {
+          setShowWordList(false)
+          setViewingBook(null)
+        }} 
+        book={viewingBook}
+      />
     </div>
   )
 }
@@ -309,6 +338,7 @@ interface WordBookCardProps {
   isLoading?: boolean
   loadProgress?: { current: number; total: number }
   onLoad?: () => void
+  onViewWords?: () => void
   presetCount?: number
 }
 
@@ -321,11 +351,17 @@ function WordBookCard({
   isLoading,
   loadProgress,
   onLoad,
+  onViewWords,
   presetCount
 }: WordBookCardProps) {
   const handleLoadClick = (e: React.MouseEvent) => {
     e.stopPropagation()
     onLoad?.()
+  }
+
+  const handleViewWords = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    onViewWords?.()
   }
   
   return (
@@ -403,6 +439,15 @@ function WordBookCard({
             <div className="mt-2 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-green-500" />
               <span className="text-gray-500 text-sm">{book.wordCount} 个单词</span>
+              {book.wordCount > 0 && (
+                <button
+                  onClick={handleViewWords}
+                  className="ml-2 flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors"
+                >
+                  <Eye className="w-3 h-3" />
+                  查看
+                </button>
+              )}
             </div>
           )}
         </div>

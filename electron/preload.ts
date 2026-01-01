@@ -8,13 +8,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onMaximizeChange: (callback: (isMaximized: boolean) => void) => {
     ipcRenderer.on('maximize-change', (_, isMaximized) => callback(isMaximized))
   },
-  // 剪贴板翻译相关
-  onClipboardTranslate: (callback: (event: any, text: string) => void) => {
-    ipcRenderer.on('clipboard-translate', callback)
-  },
-  removeClipboardTranslateListener: () => {
-    ipcRenderer.removeAllListeners('clipboard-translate')
-  },
 })
 
 export {}

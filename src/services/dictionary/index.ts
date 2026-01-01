@@ -1031,69 +1031,223 @@ class DictionaryService {
 
   // 从 API 获取单词详情
   async fetchWord(word: string): Promise<Word | null> {
+    const normalizedWord = word.toLowerCase().trim()
+    
     // 检查缓存
-    if (this.cache.has(word.toLowerCase())) {
-      return this.cache.get(word.toLowerCase())!
+    if (this.cache.has(normalizedWord)) {
+      return this.cache.get(normalizedWord)!
     }
 
     try {
-      const response = await fetch(`${this.baseUrl}/${encodeURIComponent(word)}`)
+      const response = await fetch(`${this.baseUrl}/${encodeURIComponent(normalizedWord)}`)
       
       if (!response.ok) {
-        console.warn(`无法获取单词 "${word}" 的详情`)
-        return await this.createBasicWord(word)
+        console.warn(`API无法获取单词 "${word}"，尝试AI生成`)
+        const aiWord = await this.createWordWithAI(normalizedWord)
+        this.cache.set(normalizedWord, aiWord)
+        return aiWord
       }
 
       const data: DictionaryResponse[] = await response.json()
-      const wordData = await this.transformResponse(data[0], word)
+      let wordData = this.transformResponse(data[0], normalizedWord)
+      
+      // 检查数据是否完整，不完整则用AI补充
+      if (this.needsEnrichment(wordData)) {
+        wordData = await this.enrichWithAI(wordData)
+      }
       
       // 缓存结果
-      this.cache.set(word.toLowerCase(), wordData)
-      
+      this.cache.set(normalizedWord, wordData)
       return wordData
     } catch (error) {
       console.error(`获取单词 "${word}" 失败:`, error)
-      return await this.createBasicWord(word)
+      const aiWord = await this.createWordWithAI(normalizedWord)
+      this.cache.set(normalizedWord, aiWord)
+      return aiWord
+    }
+  }
+
+  // 检查单词数据是否需要AI补充
+  private needsEnrichment(word: Word): boolean {
+    // 检查是否有有效的中文翻译
+    const hasValidTranslation = word.meanings.some(m => 
+      m.translation && 
+      m.translation !== '待补充' && 
+      m.translation !== '待翻译' &&
+      /[\u4e00-\u9fa5]/.test(m.translation) // 包含中文字符
+    )
+    
+    // 检查词性是否有效
+    const hasValidPartOfSpeech = word.meanings.some(m => 
+      m.partOfSpeech && 
+      m.partOfSpeech !== 'unknown'
+    )
+    
+    return !hasValidTranslation || !hasValidPartOfSpeech
+  }
+
+  // 使用AI补充单词信息
+  private async enrichWithAI(word: Word): Promise<Word> {
+    if (!aiService.isConfigured()) {
+      // AI未配置，尝试使用本地翻译
+      const localTranslation = commonTranslations[word.word.toLowerCase()]
+      if (localTranslation) {
+        return {
+          ...word,
+          meanings: word.meanings.map(m => ({
+            ...m,
+            translation: m.translation === '待翻译' || m.translation === '待补充' 
+              ? localTranslation 
+              : m.translation,
+          })),
+        }
+      }
+      return word
+    }
+
+    try {
+      const aiEnrichment = await aiService.enrichWordInfo(word.word)
+      if (!aiEnrichment) return word
+
+      // 补充音标
+      const phonetic = {
+        us: word.phonetic.us || aiEnrichment.phonetic?.us || '',
+        uk: word.phonetic.uk || aiEnrichment.phonetic?.uk || word.phonetic.us || '',
+      }
+
+      // 补充释义 - 为每个义项添加中文翻译
+      const meanings = word.meanings.map((m, index) => {
+        // 如果已有有效翻译，保留
+        if (m.translation && m.translation !== '待补充' && m.translation !== '待翻译' && /[\u4e00-\u9fa5]/.test(m.translation)) {
+          return m
+        }
+        
+        // 尝试从AI结果中获取匹配的翻译
+        const aiMeaning = aiEnrichment.meanings?.find((am: any) => 
+          am.partOfSpeech === m.partOfSpeech || 
+          this.normalizePartOfSpeech(am.partOfSpeech) === this.normalizePartOfSpeech(m.partOfSpeech)
+        ) || aiEnrichment.meanings?.[index] || aiEnrichment.meanings?.[0]
+        
+        return {
+          ...m,
+          partOfSpeech: m.partOfSpeech === 'unknown' ? (aiMeaning?.partOfSpeech || 'n.') : m.partOfSpeech,
+          translation: aiMeaning?.translation || commonTranslations[word.word.toLowerCase()] || m.translation,
+        }
+      })
+
+      // 如果原来没有释义但AI有，添加AI的释义
+      if (meanings.length === 0 && aiEnrichment.meanings?.length > 0) {
+        for (const m of aiEnrichment.meanings) {
+          meanings.push({
+            partOfSpeech: m.partOfSpeech || 'n.',
+            definition: '',
+            translation: m.translation,
+          })
+        }
+      }
+
+      return {
+        ...word,
+        phonetic,
+        meanings: meanings.length > 0 ? meanings : word.meanings,
+        tags: word.tags?.includes('AI补充') ? word.tags : [...(word.tags || []), 'AI补充'],
+      }
+    } catch (error) {
+      console.warn('AI补充失败:', error)
+      return word
+    }
+  }
+
+  // 标准化词性
+  private normalizePartOfSpeech(pos: string): string {
+    if (!pos) return ''
+    const normalized = pos.toLowerCase().replace(/[.\s]/g, '')
+    const mapping: Record<string, string> = {
+      'noun': 'n',
+      'verb': 'v',
+      'adjective': 'adj',
+      'adverb': 'adv',
+      'preposition': 'prep',
+      'conjunction': 'conj',
+      'pronoun': 'pron',
+      'interjection': 'interj',
+      'n': 'n',
+      'v': 'v',
+      'adj': 'adj',
+      'adv': 'adv',
+    }
+    return mapping[normalized] || normalized
+  }
+
+  // 完全使用AI创建单词（当API完全失败时）
+  private async createWordWithAI(word: string): Promise<Word> {
+    const localTranslation = commonTranslations[word.toLowerCase()]
+    
+    // 尝试使用 AI 补充
+    if (aiService.isConfigured()) {
+      try {
+        const aiEnrichment = await aiService.enrichWordInfo(word)
+        if (aiEnrichment && aiEnrichment.meanings?.length > 0) {
+          return {
+            id: `ai_${word.toLowerCase()}_${Date.now()}`,
+            word: word,
+            phonetic: aiEnrichment.phonetic || { us: '', uk: '' },
+            meanings: aiEnrichment.meanings.map((m: any) => ({
+              partOfSpeech: m.partOfSpeech || 'n.',
+              definition: '',
+              translation: m.translation,
+            })),
+            examples: [],
+            synonyms: [],
+            antonyms: [],
+            collocations: [],
+            frequency: 'medium',
+            tags: ['AI生成'],
+          }
+        }
+      } catch (error) {
+        console.warn('AI创建单词失败:', error)
+      }
+    }
+
+    // AI失败时，使用本地翻译
+    return {
+      id: `basic_${word.toLowerCase()}_${Date.now()}`,
+      word: word,
+      phonetic: { us: '', uk: '' },
+      meanings: [{
+        partOfSpeech: localTranslation ? 'n.' : 'unknown',
+        definition: '',
+        translation: localTranslation || '待补充',
+      }],
+      examples: [],
+      synonyms: [],
+      antonyms: [],
+      collocations: [],
+      frequency: 'medium',
+      tags: localTranslation ? ['本地词库'] : ['待完善'],
     }
   }
 
   // 转换 API 响应为应用内格式
-  private async transformResponse(data: DictionaryResponse, originalWord: string): Promise<Word> {
+  private transformResponse(data: DictionaryResponse, originalWord: string): Word {
     const meanings: Meaning[] = []
     const examples: string[] = []
     const synonyms: string[] = []
     const antonyms: string[] = []
 
-    // 检查是否需要 AI 补充翻译
-    let needsAIEnrichment = !commonTranslations[originalWord.toLowerCase()]
-    let aiEnrichment: any = null
-
-    if (needsAIEnrichment && aiService.isConfigured()) {
-      try {
-        aiEnrichment = await aiService.enrichWordInfo(originalWord)
-      } catch (error) {
-        console.warn('AI 补充失败，使用默认值', error)
-      }
-    }
+    // 获取本地翻译
+    const localTranslation = commonTranslations[originalWord.toLowerCase()]
 
     for (const meaning of data.meanings) {
+      // 标准化词性格式
+      const partOfSpeech = this.formatPartOfSpeech(meaning.partOfSpeech)
+      
       for (const def of meaning.definitions.slice(0, 2)) {
-        // 优先使用 commonTranslations，其次使用 AI 翻译
-        let translation = commonTranslations[originalWord.toLowerCase()] || '待翻译'
-        
-        if (aiEnrichment?.meanings) {
-          const aiMeaning = aiEnrichment.meanings.find(
-            (m: any) => m.partOfSpeech.toLowerCase().includes(meaning.partOfSpeech.substring(0, 3))
-          ) || aiEnrichment.meanings[0]
-          if (aiMeaning) {
-            translation = aiMeaning.translation
-          }
-        }
-
         meanings.push({
-          partOfSpeech: meaning.partOfSpeech,
+          partOfSpeech,
           definition: def.definition,
-          translation,
+          translation: localTranslation || '待翻译', // 稍后会被AI补充
         })
         if (def.example) {
           examples.push(def.example)
@@ -1113,14 +1267,9 @@ class DictionaryService {
       }
     }
 
-    // 获取音标，优先使用 API，如果缺失则使用 AI 补充
-    let usPhonetic = data.phonetics.find(p => p.audio?.includes('us'))?.text || data.phonetics[0]?.text || ''
-    let ukPhonetic = data.phonetics.find(p => p.audio?.includes('uk'))?.text || usPhonetic
-
-    if ((!usPhonetic || !ukPhonetic) && aiEnrichment?.phonetic) {
-      usPhonetic = usPhonetic || aiEnrichment.phonetic.us || ''
-      ukPhonetic = ukPhonetic || aiEnrichment.phonetic.uk || aiEnrichment.phonetic.us || ''
-    }
+    // 获取音标
+    const usPhonetic = data.phonetics.find(p => p.audio?.includes('us'))?.text || data.phonetics[0]?.text || ''
+    const ukPhonetic = data.phonetics.find(p => p.audio?.includes('uk'))?.text || usPhonetic
 
     return {
       id: `dict_${originalWord.toLowerCase()}_${Date.now()}`,
@@ -1139,41 +1288,22 @@ class DictionaryService {
     }
   }
 
-  // 创建基础单词（当 API 失败时），使用 AI 补充信息
-  private async createBasicWord(word: string): Promise<Word> {
-    // 尝试使用 AI 补充
-    let aiEnrichment: any = null
-    if (aiService.isConfigured()) {
-      try {
-        aiEnrichment = await aiService.enrichWordInfo(word)
-      } catch (error) {
-        console.warn('AI 补充失败', error)
-      }
+  // 格式化词性为简写形式
+  private formatPartOfSpeech(pos: string): string {
+    if (!pos) return 'unknown'
+    const mapping: Record<string, string> = {
+      'noun': 'n.',
+      'verb': 'v.',
+      'adjective': 'adj.',
+      'adverb': 'adv.',
+      'preposition': 'prep.',
+      'conjunction': 'conj.',
+      'pronoun': 'pron.',
+      'interjection': 'interj.',
+      'determiner': 'det.',
+      'exclamation': 'excl.',
     }
-
-    const phonetic = aiEnrichment?.phonetic || { us: '', uk: '' }
-    const meanings = aiEnrichment?.meanings?.map((m: any) => ({
-      partOfSpeech: m.partOfSpeech,
-      definition: '',
-      translation: m.translation,
-    })) || [{
-      partOfSpeech: 'unknown',
-      definition: '',
-      translation: commonTranslations[word.toLowerCase()] || '待补充',
-    }]
-
-    return {
-      id: `basic_${word.toLowerCase()}_${Date.now()}`,
-      word: word,
-      phonetic,
-      meanings,
-      examples: [],
-      synonyms: [],
-      antonyms: [],
-      collocations: [],
-      frequency: 'medium',
-      tags: ['基础词汇'],
-    }
+    return mapping[pos.toLowerCase()] || pos
   }
 
   // 批量获取单词
@@ -1195,6 +1325,19 @@ class DictionaryService {
     }
 
     return results
+  }
+
+  // 公开方法：手动补充单词信息（用于学习时补充不完整的单词）
+  async enrichWord(word: Word): Promise<Word> {
+    if (!this.needsEnrichment(word)) {
+      return word
+    }
+    return await this.enrichWithAI(word)
+  }
+
+  // 清除缓存
+  clearCache(): void {
+    this.cache.clear()
   }
 }
 
