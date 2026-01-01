@@ -190,33 +190,6 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* 发音偏好 */}
-          <div>
-            <label className="block text-gray-600 text-sm mb-2">发音偏好</label>
-            <div className="flex gap-4">
-              <button
-                onClick={() => updateSettings({ pronunciation: 'us' })}
-                className={`flex-1 py-3 rounded-xl font-medium transition-colors ${
-                  settings.pronunciation === 'us'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                🇺🇸 美式发音
-              </button>
-              <button
-                onClick={() => updateSettings({ pronunciation: 'uk' })}
-                className={`flex-1 py-3 rounded-xl font-medium transition-colors ${
-                  settings.pronunciation === 'uk'
-                    ? 'bg-blue-500 text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                🇬🇧 英式发音
-              </button>
-            </div>
-          </div>
-
           {/* 自动播放 */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">

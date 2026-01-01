@@ -62,19 +62,36 @@ function createTray() {
   })
 }
 
-app.whenReady().then(() => {
-  createWindow()
-  createTray()
-  
-  // 全局快捷键：Ctrl+Shift+M 显示/隐藏主窗口
-  globalShortcut.register('CommandOrControl+Shift+M', () => {
-    if (mainWindow?.isVisible()) {
-      mainWindow.hide()
-    } else {
-      mainWindow?.show()
+// 防止应用多开
+const gotTheLock = app.requestSingleInstanceLock()
+
+if (!gotTheLock) {
+  // 如果获取锁失败，说明已经有一个实例在运行，退出当前实例
+  app.quit()
+} else {
+  // 当第二个实例尝试启动时，聚焦到第一个实例的窗口
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore()
+      mainWindow.show()
+      mainWindow.focus()
     }
   })
-})
+
+  app.whenReady().then(() => {
+    createWindow()
+    createTray()
+    
+    // 全局快捷键：Ctrl+Shift+M 显示/隐藏主窗口
+    globalShortcut.register('CommandOrControl+Shift+M', () => {
+      if (mainWindow?.isVisible()) {
+        mainWindow.hide()
+      } else {
+        mainWindow?.show()
+      }
+    })
+  })
+}
 
 // IPC 通信处理
 ipcMain.on('window-minimize', () => mainWindow?.minimize())

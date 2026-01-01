@@ -17,12 +17,12 @@ import {
 
 const navItems = [
   { path: '/', icon: Home, label: '首页' },
+  { path: '/search', icon: Search, label: '搜索' },
   { path: '/learn', icon: BookOpen, label: '学习' },
   { path: '/review', icon: RefreshCw, label: '复习' },
   { path: '/quiz', icon: FileQuestion, label: '测验' },
   { path: '/ai-quiz', icon: Brain, label: 'AI测验' },
   { path: '/ai-coach', icon: Sparkles, label: 'AI教练' },
-  { path: '/search', icon: Search, label: '搜索' },
   { path: '/wordbook', icon: Library, label: '词库' },
   { path: '/statistics', icon: BarChart3, label: '统计' },
   { path: '/settings', icon: Settings, label: '设置' },

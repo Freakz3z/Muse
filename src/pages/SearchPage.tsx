@@ -357,24 +357,45 @@ export default function SearchPage() {
             </div>
             
             {customBooks.length > 0 ? (
-              <div className="flex gap-3">
-                <select
-                  value={selectedBook}
-                  onChange={(e) => setSelectedBook(e.target.value)}
-                  className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
-                >
-                  <option value="">选择词库...</option>
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3 max-h-64 overflow-y-auto">
                   {customBooks.map((book) => (
-                    <option key={book.id} value={book.id}>
-                      {book.name} ({book.wordCount} 词)
-                    </option>
+                    <button
+                      key={book.id}
+                      onClick={() => setSelectedBook(book.id === selectedBook ? '' : book.id)}
+                      className={`relative p-4 rounded-xl border-2 transition-all text-left ${
+                        selectedBook === book.id
+                          ? 'border-purple-500 bg-purple-50'
+                          : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                          selectedBook === book.id
+                            ? 'border-purple-500 bg-purple-500'
+                            : 'border-gray-300'
+                        }`}>
+                          {selectedBook === book.id && (
+                            <Check className="w-3 h-3 text-white" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="font-medium text-gray-900 truncate">
+                            {book.name}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {book.wordCount} 个单词
+                          </div>
+                        </div>
+                      </div>
+                    </button>
                   ))}
-                </select>
+                </div>
                 
                 <button
                   onClick={handleAddToBook}
                   disabled={!selectedBook || addSuccess}
-                  className={`px-6 py-3 rounded-xl font-medium transition-all flex items-center gap-2 ${
+                  className={`w-full px-6 py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2 ${
                     addSuccess
                       ? 'bg-green-500 text-white'
                       : 'bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed'
@@ -383,12 +404,12 @@ export default function SearchPage() {
                   {addSuccess ? (
                     <>
                       <Check className="w-5 h-5" />
-                      已添加
+                      已添加到词库
                     </>
                   ) : (
                     <>
                       <Plus className="w-5 h-5" />
-                      添加
+                      添加到选中词库
                     </>
                   )}
                 </button>
