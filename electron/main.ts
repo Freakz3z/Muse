@@ -19,7 +19,7 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
-    icon: path.join(__dirname, '../public/icon.ico'),
+    icon: path.join(__dirname, '../public/Muse.ico'),
   })
 
   if (VITE_DEV_SERVER_URL) {
@@ -36,7 +36,7 @@ function createWindow() {
 }
 
 function createTray() {
-  const icon = nativeImage.createFromPath(path.join(__dirname, '../public/icon.ico'))
+  const icon = nativeImage.createFromPath(path.join(__dirname, '../public/Muse.ico'))
   tray = new Tray(icon.resize({ width: 16, height: 16 }))
   
   const contextMenu = Menu.buildFromTemplate([
