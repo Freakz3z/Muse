@@ -498,6 +498,64 @@ ${stats.weakWords?.length ? `- 薄弱单词：${stats.weakWords.join(', ')}` : '
       return false;
     }
   }
+
+  // 使用 AI 补充单词的音标、词性和翻译
+  async enrichWordInfo(word: string): Promise<{
+    phonetic: { us: string; uk: string };
+    meanings: Array<{
+      partOfSpeech: string;
+      translation: string;
+    }>;
+  } | null> {
+    if (!this.isConfigured()) {
+      return null;
+    }
+
+    try {
+      const response = await this.chat([
+        {
+          role: 'system',
+          content: '你是一个专业的英语词典助手。请为用户提供准确的单词音标、词性和中文翻译。'
+        },
+        {
+          role: 'user',
+          content: `请为单词"${word}"提供以下信息，以JSON格式返回：
+{
+  "phonetic": {
+    "us": "美式音标（使用IPA国际音标）",
+    "uk": "英式音标（使用IPA国际音标）"
+  },
+  "meanings": [
+    {
+      "partOfSpeech": "词性（如n., v., adj.等）",
+      "translation": "简洁的中文翻译"
+    }
+  ]
+}
+
+要求：
+1. 音标使用标准IPA格式，包含斜杠 /ˈeksəmpl/
+2. 提供1-3个最常用的词性和翻译
+3. 翻译要简洁准确，用逗号分隔多个含义
+4. 只返回JSON，不要其他解释`
+        }
+      ]);
+
+      // 提取JSON内容
+      let jsonStr = response.content.trim();
+      // 尝试提取代码块中的JSON
+      const codeBlockMatch = jsonStr.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+      if (codeBlockMatch) {
+        jsonStr = codeBlockMatch[1];
+      }
+      
+      const data = JSON.parse(jsonStr);
+      return data;
+    } catch (error) {
+      console.error('AI 补充单词信息失败:', error);
+      return null;
+    }
+  }
 }
 
 // 单例

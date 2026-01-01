@@ -2,6 +2,7 @@
 // https://dictionaryapi.dev/
 
 import { Word, Meaning } from '../../types'
+import { aiService } from '../ai'
 
 interface DictionaryResponse {
   word: string
@@ -1040,11 +1041,11 @@ class DictionaryService {
       
       if (!response.ok) {
         console.warn(`无法获取单词 "${word}" 的详情`)
-        return this.createBasicWord(word)
+        return await this.createBasicWord(word)
       }
 
       const data: DictionaryResponse[] = await response.json()
-      const wordData = this.transformResponse(data[0], word)
+      const wordData = await this.transformResponse(data[0], word)
       
       // 缓存结果
       this.cache.set(word.toLowerCase(), wordData)
@@ -1052,23 +1053,47 @@ class DictionaryService {
       return wordData
     } catch (error) {
       console.error(`获取单词 "${word}" 失败:`, error)
-      return this.createBasicWord(word)
+      return await this.createBasicWord(word)
     }
   }
 
   // 转换 API 响应为应用内格式
-  private transformResponse(data: DictionaryResponse, originalWord: string): Word {
+  private async transformResponse(data: DictionaryResponse, originalWord: string): Promise<Word> {
     const meanings: Meaning[] = []
     const examples: string[] = []
     const synonyms: string[] = []
     const antonyms: string[] = []
 
+    // 检查是否需要 AI 补充翻译
+    let needsAIEnrichment = !commonTranslations[originalWord.toLowerCase()]
+    let aiEnrichment: any = null
+
+    if (needsAIEnrichment && aiService.isConfigured()) {
+      try {
+        aiEnrichment = await aiService.enrichWordInfo(originalWord)
+      } catch (error) {
+        console.warn('AI 补充失败，使用默认值', error)
+      }
+    }
+
     for (const meaning of data.meanings) {
       for (const def of meaning.definitions.slice(0, 2)) {
+        // 优先使用 commonTranslations，其次使用 AI 翻译
+        let translation = commonTranslations[originalWord.toLowerCase()] || '待翻译'
+        
+        if (aiEnrichment?.meanings) {
+          const aiMeaning = aiEnrichment.meanings.find(
+            (m: any) => m.partOfSpeech.toLowerCase().includes(meaning.partOfSpeech.substring(0, 3))
+          ) || aiEnrichment.meanings[0]
+          if (aiMeaning) {
+            translation = aiMeaning.translation
+          }
+        }
+
         meanings.push({
           partOfSpeech: meaning.partOfSpeech,
           definition: def.definition,
-          translation: commonTranslations[originalWord.toLowerCase()] || '待翻译',
+          translation,
         })
         if (def.example) {
           examples.push(def.example)
@@ -1088,9 +1113,14 @@ class DictionaryService {
       }
     }
 
-    // 获取音标
-    const usPhonetic = data.phonetics.find(p => p.audio?.includes('us'))?.text || data.phonetics[0]?.text || ''
-    const ukPhonetic = data.phonetics.find(p => p.audio?.includes('uk'))?.text || usPhonetic
+    // 获取音标，优先使用 API，如果缺失则使用 AI 补充
+    let usPhonetic = data.phonetics.find(p => p.audio?.includes('us'))?.text || data.phonetics[0]?.text || ''
+    let ukPhonetic = data.phonetics.find(p => p.audio?.includes('uk'))?.text || usPhonetic
+
+    if ((!usPhonetic || !ukPhonetic) && aiEnrichment?.phonetic) {
+      usPhonetic = usPhonetic || aiEnrichment.phonetic.us || ''
+      ukPhonetic = ukPhonetic || aiEnrichment.phonetic.uk || aiEnrichment.phonetic.us || ''
+    }
 
     return {
       id: `dict_${originalWord.toLowerCase()}_${Date.now()}`,
@@ -1109,17 +1139,34 @@ class DictionaryService {
     }
   }
 
-  // 创建基础单词（当 API 失败时）
-  private createBasicWord(word: string): Word {
+  // 创建基础单词（当 API 失败时），使用 AI 补充信息
+  private async createBasicWord(word: string): Promise<Word> {
+    // 尝试使用 AI 补充
+    let aiEnrichment: any = null
+    if (aiService.isConfigured()) {
+      try {
+        aiEnrichment = await aiService.enrichWordInfo(word)
+      } catch (error) {
+        console.warn('AI 补充失败', error)
+      }
+    }
+
+    const phonetic = aiEnrichment?.phonetic || { us: '', uk: '' }
+    const meanings = aiEnrichment?.meanings?.map((m: any) => ({
+      partOfSpeech: m.partOfSpeech,
+      definition: '',
+      translation: m.translation,
+    })) || [{
+      partOfSpeech: 'unknown',
+      definition: '',
+      translation: commonTranslations[word.toLowerCase()] || '待补充',
+    }]
+
     return {
       id: `basic_${word.toLowerCase()}_${Date.now()}`,
       word: word,
-      phonetic: { us: '', uk: '' },
-      meanings: [{
-        partOfSpeech: 'unknown',
-        definition: '',
-        translation: commonTranslations[word.toLowerCase()] || '待补充',
-      }],
+      phonetic,
+      meanings,
       examples: [],
       synonyms: [],
       antonyms: [],
