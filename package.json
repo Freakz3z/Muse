@@ -44,7 +44,7 @@
     },
     "win": {
       "target": "nsis",
-      "icon": "public/icon.ico"
+      "icon": "public/Muse.ico"
     },
     "nsis": {
       "oneClick": false,

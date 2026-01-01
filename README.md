@@ -1,7 +1,7 @@
 # Muse - AI-Powered English Vocabulary Learning Assistant 🎓
 
 <p align="center">
-  <img src="public/icon.png" alt="Muse Logo" width="128" height="128">
+  <img src="public/Muse.png" alt="Muse Logo" width="128" height="128">
 </p>
 
 <p align="center">
