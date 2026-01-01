@@ -1,18 +1,12 @@
-import { useState, useCallback } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useState } from 'react'
+import { motion } from 'framer-motion'
 import { 
   Plus, 
   Search, 
   BookOpen, 
-  Trash2, 
-  Edit3,
   Check,
-  X,
   FolderOpen,
   Upload,
-  Download,
-  Loader2,
-  Cloud,
   CheckCircle2,
   Eye
 } from 'lucide-react'
@@ -20,11 +14,9 @@ import { useAppStore } from '../store'
 import { WordBook } from '../types'
 import ImportModal from '../components/ImportModal'
 import WordListModal from '../components/WordListModal'
-import { initializeWordBook, presetWordLists } from '../data/words'
-import { wordStorage, bookStorage } from '../storage'
 
 export default function WordBookPage() {
-  const { books, currentBook, selectBook, createBook, loadWords, loadBooks } = useAppStore()
+  const { books, currentBook, selectBook, createBook } = useAppStore()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
   const [showWordList, setShowWordList] = useState(false)
@@ -32,69 +24,6 @@ export default function WordBookPage() {
   const [newBookName, setNewBookName] = useState('')
   const [newBookDesc, setNewBookDesc] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
-  
-  // 后台下载管理
-  const [backgroundTasks, setBackgroundTasks] = useState<Map<string, { current: number; total: number }>>(new Map())
-  
-  // 加载词库单词（后台运行）
-  const handleLoadBook = useCallback(async (bookId: string) => {
-    // 立即标记为后台任务
-    setBackgroundTasks(prev => new Map(prev).set(bookId, { current: 0, total: 0 }))
-    
-    // 异步后台加载
-    try {
-      const wordIds = await initializeWordBook(
-        bookId,
-        { 
-          save: wordStorage.save.bind(wordStorage), 
-          getAll: wordStorage.getAll.bind(wordStorage) 
-        },
-        (current, total) => {
-          setBackgroundTasks(prev => new Map(prev).set(bookId, { current, total }))
-        }
-      )
-      
-      // 获取最新的词库列表
-      const allBooks = await bookStorage.getAll()
-      const book = allBooks.find(b => b.id === bookId)
-      
-      if (book && wordIds.length > 0) {
-        const updatedBook = { ...book, wordIds, wordCount: wordIds.length }
-        await bookStorage.save(updatedBook)
-        // 重新加载数据
-        await loadBooks()
-        await loadWords()
-        // 如果当前选中的就是这个词库，重新选择它以刷新状态
-        if (currentBook?.id === bookId) {
-          await selectBook(bookId)
-        }
-      }
-    } catch (error) {
-      console.error('加载词库失败:', error)
-    } finally {
-      // 完成后从后台任务列表移除
-      setBackgroundTasks(prev => {
-        const next = new Map(prev)
-        next.delete(bookId)
-        return next
-      })
-    }
-  }, [loadBooks, loadWords])
-  
-  // 检查词库是否需要加载（未下载或未完成）
-  const needsLoading = (book: WordBook) => {
-    const listKey = book.id.replace('book_', '')
-    const presetList = presetWordLists[listKey]
-    if (!presetList) return false
-    // 如果已下载数量小于预设词数的90%，认为需要加载
-    return book.wordIds.length < presetList.length * 0.9
-  }
-  
-  // 获取预设词数
-  const getPresetCount = (book: WordBook) => {
-    const listKey = book.id.replace('book_', '')
-    return presetWordLists[listKey]?.length || 0
-  }
 
   const handleCreateBook = async () => {
     if (!newBookName.trim()) return
@@ -119,9 +48,6 @@ export default function WordBookPage() {
 
   const builtinBooks = filteredBooks.filter(b => b.category === 'builtin')
   const customBooks = filteredBooks.filter(b => b.category === 'custom')
-
-  // 检查是否有后台任务
-  const hasBackgroundTasks = backgroundTasks.size > 0
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -163,52 +89,12 @@ export default function WordBookPage() {
         />
       </div>
 
-      {/* 后台下载任务提示 */}
-      {hasBackgroundTasks && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6"
-        >
-          <div className="flex items-start gap-3">
-            <Loader2 className="w-5 h-5 text-blue-500 animate-spin flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <h4 className="font-medium text-blue-900 mb-1">后台下载进行中</h4>
-              <p className="text-blue-700 text-sm mb-3">
-                {backgroundTasks.size} 个词库正在后台下载，您可以继续浏览其他页面
-              </p>
-              <div className="space-y-2">
-                {Array.from(backgroundTasks.entries()).map(([bookId, progress]) => {
-                  const book = books.find(b => b.id === bookId)
-                  return (
-                    <div key={bookId} className="flex items-center gap-3">
-                      <span className="text-sm text-blue-700 min-w-[100px] truncate">{book?.name}</span>
-                      <div className="flex-1 h-1.5 bg-blue-200 rounded-full overflow-hidden">
-                        <motion.div
-                          className="h-full bg-blue-500"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${progress.total > 0 ? (progress.current / progress.total) * 100 : 0}%` }}
-                        />
-                      </div>
-                      <span className="text-xs text-blue-600 min-w-[60px] text-right">
-                        {progress.total > 0 ? `${progress.current}/${progress.total}` : '准备中...'}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      )}
-
       {/* 内置词库 */}
       {builtinBooks.length > 0 && (
         <div className="mb-8">
           <h2 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
-            <Cloud className="w-5 h-5 text-blue-500" />
+            <BookOpen className="w-5 h-5 text-blue-500" />
             内置词库
-            <span className="text-sm text-gray-400 font-normal">（点击下载按钮加载词库数据）</span>
           </h2>
           <div className="grid md:grid-cols-2 gap-4">
             {builtinBooks.map((book) => (
@@ -217,15 +103,10 @@ export default function WordBookPage() {
                 book={book}
                 isSelected={currentBook?.id === book.id}
                 onSelect={() => selectBook(book.id)}
-                needsLoading={needsLoading(book)}
-                isLoading={backgroundTasks.has(book.id)}
-                loadProgress={backgroundTasks.get(book.id)}
-                onLoad={() => handleLoadBook(book.id)}
                 onViewWords={() => {
                   setViewingBook(book)
                   setShowWordList(true)
                 }}
-                presetCount={getPresetCount(book)}
               />
             ))}
           </div>
@@ -334,31 +215,15 @@ interface WordBookCardProps {
   isSelected: boolean
   onSelect: () => void
   canDelete?: boolean
-  needsLoading?: boolean
-  isLoading?: boolean
-  loadProgress?: { current: number; total: number }
-  onLoad?: () => void
   onViewWords?: () => void
-  presetCount?: number
 }
 
 function WordBookCard({ 
   book, 
   isSelected, 
   onSelect, 
-  canDelete,
-  needsLoading,
-  isLoading,
-  loadProgress,
-  onLoad,
-  onViewWords,
-  presetCount
+  onViewWords
 }: WordBookCardProps) {
-  const handleLoadClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    onLoad?.()
-  }
-
   const handleViewWords = (e: React.MouseEvent) => {
     e.stopPropagation()
     onViewWords?.()
@@ -395,61 +260,19 @@ function WordBookCard({
           <h3 className="font-semibold text-gray-800 truncate">{book.name}</h3>
           <p className="text-gray-500 text-sm truncate">{book.description || '暂无描述'}</p>
           
-          {/* 加载状态 */}
-          {isLoading ? (
-            <div className="mt-3">
-              <div className="flex items-center gap-2 text-blue-500 text-sm mb-1">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                后台下载中...
-              </div>
-              {loadProgress && loadProgress.total > 0 && (
-                <>
-                  <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
-                    <motion.div
-                      className="h-full bg-gradient-to-r from-blue-500 to-purple-500"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${(loadProgress.current / loadProgress.total) * 100}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-gray-400 mt-1">
-                    {loadProgress.current} / {loadProgress.total}
-                  </p>
-                </>
-              )}
-            </div>
-          ) : needsLoading ? (
-            <div className="mt-3">
-              <div className="flex items-center gap-2 mb-1">
-                <button
-                  onClick={handleLoadClick}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-medium hover:bg-blue-100 transition-colors"
-                >
-                  <Download className="w-4 h-4" />
-                  {book.wordIds.length > 0 ? '继续下载' : '下载词库数据'}
-                </button>
-                <span className="text-gray-400 text-xs">需要网络</span>
-              </div>
-              {book.wordIds.length > 0 && presetCount && (
-                <p className="text-xs text-gray-400">
-                  已下载 {book.wordIds.length} / {presetCount} 词
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="mt-2 flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-green-500" />
-              <span className="text-gray-500 text-sm">{book.wordCount} 个单词</span>
-              {book.wordCount > 0 && (
-                <button
-                  onClick={handleViewWords}
-                  className="ml-2 flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors"
-                >
-                  <Eye className="w-3 h-3" />
-                  查看
-                </button>
-              )}
-            </div>
-          )}
+          <div className="mt-2 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-green-500" />
+            <span className="text-gray-500 text-sm">{book.wordCount} 个单词</span>
+            {book.wordCount > 0 && (
+              <button
+                onClick={handleViewWords}
+                className="ml-2 flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs font-medium hover:bg-gray-200 transition-colors"
+              >
+                <Eye className="w-3 h-3" />
+                查看
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </motion.div>

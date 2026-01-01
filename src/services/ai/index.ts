@@ -321,31 +321,41 @@ ${contextHint}
         content: `你是一个专业的英语词汇教师。请为学生深入解释单词的含义和用法。
 学生水平：${userLevel === 'beginner' ? '初级' : userLevel === 'intermediate' ? '中级' : '高级'}
 
-请以JSON格式返回，包含以下字段：
+请严格按照以下JSON格式返回，不要添加任何额外的文字说明：
 {
   "word": "单词",
-  "basicMeaning": "基本含义（简洁的中文解释）",
-  "detailedExplanation": "详细解释（包括词源、引申义、语境用法等，200字左右）",
+  "basicMeaning": "基本含义（简洁的中文解释，20字以内）",
+  "detailedExplanation": "详细解释（包括词源、引申义、语境用法等）",
   "usageNotes": "用法要点（什么场合用，搭配什么词等）",
   "commonMistakes": ["常见错误1", "常见错误2"],
   "culturalNotes": "文化背景（如有）",
-  "difficultyLevel": "beginner/intermediate/advanced"
+  "difficultyLevel": "intermediate"
 }
 
-只返回JSON，不要其他内容。` 
+注意：只返回纯JSON对象，不要用markdown代码块包裹，不要添加其他说明。` 
       },
       { role: 'user', content: word },
     ]);
 
     try {
-      const jsonMatch = response.content.match(/\{[\s\S]*\}/);
+      // 清理响应内容
+      let jsonStr = response.content.trim();
+      
+      // 移除markdown代码块标记
+      jsonStr = jsonStr.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+      
+      // 提取JSON对象
+      const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
+        const parsed = JSON.parse(jsonMatch[0]);
+        return parsed;
       }
     } catch (error) {
       console.error('解析词义解释响应失败:', error);
+      console.error('原始响应:', response.content);
     }
     
+    // 返回默认值
     return {
       word,
       basicMeaning: response.content,
@@ -553,6 +563,73 @@ ${stats.weakWords?.length ? `- 薄弱单词：${stats.weakWords.join(', ')}` : '
       return data;
     } catch (error) {
       console.error('AI 补充单词信息失败:', error);
+      return null;
+    }
+  }
+
+  // 使用 AI 完整搜索单词（快速版本）
+  async searchWord(word: string): Promise<{
+    word: string;
+    phonetic: { us: string; uk: string };
+    meanings: Array<{
+      partOfSpeech: string;
+      definition: string;
+      translation: string;
+    }>;
+    examples: string[];
+    synonyms?: string[];
+    antonyms?: string[];
+  } | null> {
+    if (!this.isConfigured()) {
+      return null;
+    }
+
+    try {
+      const response = await this.chat([
+        {
+          role: 'system',
+          content: '你是一个专业的英语词典。请快速准确地提供单词信息。'
+        },
+        {
+          role: 'user',
+          content: `请为单词"${word}"提供完整的词典信息，以JSON格式返回：
+{
+  "word": "${word}",
+  "phonetic": {
+    "us": "美式音标",
+    "uk": "英式音标"
+  },
+  "meanings": [
+    {
+      "partOfSpeech": "词性",
+      "definition": "英文定义",
+      "translation": "中文翻译"
+    }
+  ],
+  "examples": ["实用例句1", "实用例句2", "实用例句3"],
+  "synonyms": ["同义词1", "同义词2"],
+  "antonyms": ["反义词1", "反义词2"]
+}
+
+要求：
+1. 音标使用IPA格式
+2. 提供2-4个主要词性和释义
+3. 例句要实用且地道
+4. 只返回JSON，不要其他内容`
+        }
+      ]);
+
+      // 提取JSON内容
+      let jsonStr = response.content.trim();
+      const codeBlockMatch = jsonStr.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+      if (codeBlockMatch) {
+        jsonStr = codeBlockMatch[1];
+      }
+      
+      const data = JSON.parse(jsonStr);
+      return data;
+    } catch (error) {
+      console.error('AI 搜索单词失败:', error);
       return null;
     }
   }

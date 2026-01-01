@@ -8,15 +8,12 @@ import {
   Clock,
   Trophy,
   ArrowRight,
-  Sparkles,
-  Download,
-  AlertCircle
+  Sparkles
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useAppStore } from '../store'
 import StatCard from '../components/StatCard'
 import ProgressBar from '../components/ProgressBar'
-import { presetWordLists } from '../data/words'
 
 export default function Home() {
   const { profile, todayStats, settings, records, currentBook } = useAppStore()
@@ -38,11 +35,6 @@ export default function Home() {
 
   const dailyProgress = todayStats.newWords + todayStats.reviewedWords
   const totalMastered = Array.from(records.values()).filter(r => r.masteryLevel >= 3).length
-  
-  // 检查当前词库是否需要下载
-  const needsDownload = currentBook && 
-    currentBook.wordIds.length === 0 && 
-    currentBook.id.replace('book_', '') in presetWordLists
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -132,30 +124,6 @@ export default function Home() {
 
       {/* 快捷入口 */}
       <div className="grid md:grid-cols-2 gap-4">
-        {/* 词库下载提示 */}
-        {needsDownload && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="md:col-span-2"
-          >
-            <Link to="/wordbook">
-              <div className="bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-4 hover:shadow-md transition-all">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-orange-100 rounded-lg">
-                    <Download className="w-5 h-5 text-orange-500" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-medium text-gray-800">词库「{currentBook?.name}」需要下载</p>
-                    <p className="text-sm text-gray-500">点击前往词库管理页面下载词汇数据</p>
-                  </div>
-                  <ArrowRight className="w-5 h-5 text-orange-400" />
-                </div>
-              </div>
-            </Link>
-          </motion.div>
-        )}
-        
         {/* 开始学习 */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}

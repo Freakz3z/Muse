@@ -5,12 +5,10 @@ import Layout from './components/Layout'
 import Home from './pages/Home'
 import Learn from './pages/Learn'
 import Review from './pages/Review'
-import Quiz from './pages/Quiz'
 import WordBook from './pages/WordBook'
 import Statistics from './pages/Statistics'
 import Settings from './pages/Settings'
 import AIQuiz from './pages/AIQuiz'
-import AICoach from './pages/AICoach'
 import SearchPage from './pages/SearchPage'
 
 function App() {
@@ -39,9 +37,7 @@ function App() {
           <Route index element={<Home />} />
           <Route path="learn" element={<Learn />} />
           <Route path="review" element={<Review />} />
-          <Route path="quiz" element={<Quiz />} />
-          <Route path="ai-quiz" element={<AIQuiz />} />
-          <Route path="ai-coach" element={<AICoach />} />
+          <Route path="quiz" element={<AIQuiz />} />
           <Route path="search" element={<SearchPage />} />
           <Route path="wordbook" element={<WordBook />} />
           <Route path="statistics" element={<Statistics />} />

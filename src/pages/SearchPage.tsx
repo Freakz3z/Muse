@@ -15,7 +15,6 @@ import {
 } from 'lucide-react'
 import { useAppStore } from '../store'
 import { Word } from '../types'
-import { dictionaryService } from '../services/dictionary'
 import { aiService } from '../services/ai'
 import { wordStorage } from '../storage'
 import { WordMeaningExplanation, AIConfig, defaultAIConfig } from '../services/ai/types'
@@ -46,6 +45,7 @@ export default function SearchPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [searchResult, setSearchResult] = useState<Word | null>(null)
   const [aiExplanation, setAiExplanation] = useState<WordMeaningExplanation | null>(null)
+  const [displayedExplanation, setDisplayedExplanation] = useState<Partial<WordMeaningExplanation>>({})
   const [error, setError] = useState<string | null>(null)
   const [selectedBook, setSelectedBook] = useState<string>('')
   const [addSuccess, setAddSuccess] = useState(false)
@@ -54,9 +54,48 @@ export default function SearchPage() {
   // 获取自定义词库
   const customBooks = books.filter(b => b.category === 'custom')
 
+  // 流式显示AI解释
+  const displayExplanationWithEffect = async (explanation: WordMeaningExplanation) => {
+    setDisplayedExplanation({})
+    
+    // 基本含义
+    if (explanation.basicMeaning) {
+      const chars = explanation.basicMeaning.split('')
+      for (let i = 0; i <= chars.length; i++) {
+        setDisplayedExplanation(prev => ({
+          ...prev,
+          basicMeaning: chars.slice(0, i).join('')
+        }))
+        await new Promise(resolve => setTimeout(resolve, 30))
+      }
+    }
+
+    // 详细解释
+    if (explanation.detailedExplanation) {
+      const chars = explanation.detailedExplanation.split('')
+      for (let i = 0; i <= chars.length; i++) {
+        setDisplayedExplanation(prev => ({
+          ...prev,
+          detailedExplanation: chars.slice(0, i).join('')
+        }))
+        await new Promise(resolve => setTimeout(resolve, 20))
+      }
+    }
+
+    // 其他字段直接显示
+    setDisplayedExplanation(explanation)
+  }
+
   const handleSearch = async (word?: string) => {
     const queryWord = word || searchQuery.trim()
     if (!queryWord) return
+    
+    // 检查AI是否配置
+    const aiConfig = getAIConfig()
+    if (!aiConfig.enabled) {
+      setError('请先在设置中配置 AI 服务')
+      return
+    }
     
     setSearchQuery(queryWord)
     setIsSearching(true)
@@ -66,35 +105,76 @@ export default function SearchPage() {
     setAddSuccess(false)
     
     try {
-      // 先从字典API获取基本信息
-      const wordData = await dictionaryService.fetchWord(queryWord)
+      // 第一阶段：快速获取基本信息（词性、释义）
+      const basicInfo = await aiService.enrichWordInfo(queryWord)
       
-      if (wordData) {
+      if (basicInfo) {
+        // 先显示基本信息
+        const wordData: Word = {
+          id: `word_${queryWord.toLowerCase()}_${Date.now()}`,
+          word: queryWord,
+          phonetic: basicInfo.phonetic,
+          meanings: basicInfo.meanings.map(m => ({
+            partOfSpeech: m.partOfSpeech,
+            definition: '', // 第一阶段暂无英文定义
+            translation: m.translation,
+          })),
+          examples: [], // 第一阶段暂无例句
+          synonyms: [],
+          antonyms: [],
+          collocations: [],
+          frequency: 'medium',
+          tags: ['AI搜索'],
+        }
+        
         setSearchResult(wordData)
+        setIsSearching(false)
+        
         // 保存搜索历史
         saveSearchHistory(queryWord)
         setSearchHistory(getSearchHistory())
         
-        // 如果AI启用，自动获取AI分析
-        const aiConfig = getAIConfig()
-        if (aiConfig.enabled) {
-          setIsAnalyzing(true)
-          try {
-            const explanation = await aiService.explainWordMeaning(queryWord)
-            setAiExplanation(explanation)
-          } catch (aiError) {
-            console.error('AI分析失败:', aiError)
-          } finally {
-            setIsAnalyzing(false)
+        // 第二阶段：异步获取详细信息（例句、同义词等）
+        setIsAnalyzing(true)
+        
+        try {
+          // 并行请求详细信息和深度分析
+          const [detailedInfo, explanation] = await Promise.all([
+            aiService.searchWord(queryWord),
+            aiService.explainWordMeaning(queryWord)
+          ])
+          
+          // 更新为完整信息
+          if (detailedInfo) {
+            const enrichedWordData: Word = {
+              ...wordData,
+              meanings: detailedInfo.meanings,
+              examples: detailedInfo.examples || [],
+              synonyms: detailedInfo.synonyms || [],
+              antonyms: detailedInfo.antonyms || [],
+              collocations: [],
+              frequency: 'medium',
+            }
+            setSearchResult(enrichedWordData)
           }
+          
+          // 设置AI深度分析并显示打字机特效
+          if (explanation) {
+            setAiExplanation(explanation)
+            await displayExplanationWithEffect(explanation)
+          }
+        } catch (detailError) {
+          console.error('获取详细信息失败:', detailError)
+          // 即使详细信息失败，也保留基本信息
+        } finally {
+          setIsAnalyzing(false)
         }
       } else {
-        setError('未找到该单词，请检查拼写是否正确')
+        setError('AI搜索失败，请检查配置或稍后重试')
       }
     } catch (err) {
       console.error('搜索失败:', err)
-      setError('搜索失败，请稍后重试')
-    } finally {
+      setError('搜索失败，请检查AI配置或稍后重试')
       setIsSearching(false)
     }
   }
@@ -144,10 +224,11 @@ export default function SearchPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
           <Search className="w-6 h-6 text-purple-500" />
-          单词搜索
+          AI 单词搜索
         </h1>
-        <p className="text-gray-500 text-sm mt-1">
-          搜索英文单词，获取释义和 AI 深度分析
+        <p className="text-gray-500 text-sm mt-1 flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-purple-400" />
+          使用 AI 快速获取单词释义和深度分析
         </p>
       </div>
 
@@ -302,30 +383,42 @@ export default function SearchPage() {
                   </div>
                 ) : aiExplanation ? (
                   <div className="space-y-5">
-                    <div>
-                      <h4 className="text-sm font-medium text-purple-600 mb-2">基本含义</h4>
-                      <p className="text-gray-700 bg-purple-50 p-4 rounded-xl">{aiExplanation.basicMeaning}</p>
-                    </div>
+                    {displayedExplanation.basicMeaning && (
+                      <div>
+                        <h4 className="text-sm font-medium text-purple-600 mb-2">基本含义</h4>
+                        <p className="text-gray-700 bg-purple-50 p-4 rounded-xl">
+                          {displayedExplanation.basicMeaning}
+                          {displayedExplanation.basicMeaning !== aiExplanation.basicMeaning && (
+                            <span className="inline-block w-2 h-4 bg-purple-600 ml-1 animate-pulse"></span>
+                          )}
+                        </p>
+                      </div>
+                    )}
                     
-                    {aiExplanation.detailedExplanation && (
+                    {displayedExplanation.detailedExplanation && (
                       <div>
                         <h4 className="text-sm font-medium text-purple-600 mb-2">详细解释</h4>
-                        <p className="text-gray-600 leading-relaxed">{aiExplanation.detailedExplanation}</p>
+                        <p className="text-gray-600 leading-relaxed">
+                          {displayedExplanation.detailedExplanation}
+                          {displayedExplanation.detailedExplanation !== aiExplanation.detailedExplanation && (
+                            <span className="inline-block w-2 h-4 bg-purple-600 ml-1 animate-pulse"></span>
+                          )}
+                        </p>
                       </div>
                     )}
                     
-                    {aiExplanation.usageNotes && (
+                    {displayedExplanation.usageNotes && (
                       <div>
                         <h4 className="text-sm font-medium text-blue-600 mb-2">用法要点</h4>
-                        <p className="text-gray-600 bg-blue-50 p-4 rounded-xl">{aiExplanation.usageNotes}</p>
+                        <p className="text-gray-600 bg-blue-50 p-4 rounded-xl">{displayedExplanation.usageNotes}</p>
                       </div>
                     )}
                     
-                    {aiExplanation.commonMistakes && aiExplanation.commonMistakes.length > 0 && (
+                    {displayedExplanation.commonMistakes && displayedExplanation.commonMistakes.length > 0 && (
                       <div>
                         <h4 className="text-sm font-medium text-orange-600 mb-2">常见错误</h4>
                         <ul className="space-y-2">
-                          {aiExplanation.commonMistakes.map((mistake, idx) => (
+                          {displayedExplanation.commonMistakes.map((mistake, idx) => (
                             <li key={idx} className="text-gray-600 flex items-start gap-2">
                               <span className="text-orange-500 mt-1">•</span>
                               {mistake}
@@ -335,10 +428,10 @@ export default function SearchPage() {
                       </div>
                     )}
 
-                    {aiExplanation.culturalNotes && (
+                    {displayedExplanation.culturalNotes && (
                       <div>
                         <h4 className="text-sm font-medium text-green-600 mb-2">文化背景</h4>
-                        <p className="text-gray-600 bg-green-50 p-4 rounded-xl">{aiExplanation.culturalNotes}</p>
+                        <p className="text-gray-600 bg-green-50 p-4 rounded-xl">{displayedExplanation.culturalNotes}</p>
                       </div>
                     )}
                   </div>

@@ -60,7 +60,7 @@ export default function AICoachPage() {
       .filter(Boolean) as string[]
 
     return {
-      totalWords: words.length,
+      totalWords: currentBook?.wordCount || 0,
       masteredWords,
       learningWords,
       reviewDueWords,

@@ -5,7 +5,11 @@
 </p>
 
 <p align="center">
-  <strong>A modern desktop application for English vocabulary learning with AI integration</strong>
+  <strong>An AI-driven intelligent English vocabulary learning assistant</strong>
+</p>
+
+<p align="center">
+  Combining advanced AI technology with proven learning methods to revolutionize your vocabulary learning experience
 </p>
 
 <p align="center">
@@ -25,7 +29,15 @@
 
 ---
 
-A desktop English vocabulary learning application built with Electron + React + TypeScript, featuring AI-powered learning assistance.
+**Muse** is an AI-driven intelligent English vocabulary learning assistant built with Electron + React + TypeScript. It leverages cutting-edge AI technology to provide personalized learning experiences, smart content generation, and adaptive study plans, making vocabulary learning more efficient and engaging.
+
+## 🌟 Core Philosophy
+
+**AI-Driven Intelligent Learning** - Muse integrates AI capabilities throughout the entire learning process:
+- 🧠 **Intelligent Content Generation** - AI creates contextual examples, explanations, and memory tips
+- 🎯 **Personalized Learning Paths** - AI analyzes your progress and provides customized study plans
+- ✨ **Adaptive Assessment** - AI generates dynamic quizzes tailored to your vocabulary level
+- 📈 **Smart Progress Tracking** - AI coaches provide data-driven insights and recommendations
 
 ## ✨ Features
 

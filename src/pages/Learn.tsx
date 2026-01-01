@@ -51,6 +51,7 @@ export default function Learn() {
   const [isLoading, setIsLoading] = useState(true)
   const [sessionComplete, setSessionComplete] = useState(false)
   const [startTime, setStartTime] = useState<number>(0)
+  const [sessionStartTime, setSessionStartTime] = useState<number>(0)
   const [correctCount, setCorrectCount] = useState(0)
   
   // AI内容状态
@@ -73,6 +74,7 @@ export default function Learn() {
     setShowAnswer(false)
     setSessionComplete(false)
     setCorrectCount(0)
+    setSessionStartTime(Date.now())
     if (newWords.length > 0 && currentBook) {
       startSession('learn', currentBook.id)
     }
@@ -192,6 +194,11 @@ export default function Learn() {
       setCurrentIndex(i => i + 1)
       setShowAnswer(false)
     } else {
+      // 计算学习时长（分钟）
+      const duration = Math.round((Date.now() - sessionStartTime) / 60000)
+      updateTodayStats({
+        studyTime: todayStats.studyTime + duration,
+      })
       setSessionComplete(true)
       endSession()
     }

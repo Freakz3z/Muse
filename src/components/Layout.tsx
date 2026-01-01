@@ -3,7 +3,6 @@ import {
   Home, 
   BookOpen, 
   RefreshCw, 
-  FileQuestion, 
   Library, 
   BarChart3, 
   Settings,
@@ -11,7 +10,6 @@ import {
   Square,
   X,
   Brain,
-  Sparkles,
   Search
 } from 'lucide-react'
 
@@ -20,9 +18,7 @@ const navItems = [
   { path: '/search', icon: Search, label: '搜索' },
   { path: '/learn', icon: BookOpen, label: '学习' },
   { path: '/review', icon: RefreshCw, label: '复习' },
-  { path: '/quiz', icon: FileQuestion, label: '测验' },
-  { path: '/ai-quiz', icon: Brain, label: 'AI测验' },
-  { path: '/ai-coach', icon: Sparkles, label: 'AI教练' },
+  { path: '/quiz', icon: Brain, label: '测验' },
   { path: '/wordbook', icon: Library, label: '词库' },
   { path: '/statistics', icon: BarChart3, label: '统计' },
   { path: '/settings', icon: Settings, label: '设置' },
@@ -40,9 +36,11 @@ export default function Layout() {
       {/* 标题栏 */}
       <header className="h-10 bg-white/80 backdrop-blur-sm border-b border-gray-200 flex items-center justify-between px-4 drag-region">
         <div className="flex items-center gap-2 no-drag">
-          <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
-            <span className="text-white text-xs font-bold">M</span>
-          </div>
+          <img 
+            src="Muse.png" 
+            alt="Muse" 
+            className="w-6 h-6 rounded-lg shadow-sm"
+          />
           <span className="text-sm font-semibold text-gray-700">Muse</span>
         </div>
         

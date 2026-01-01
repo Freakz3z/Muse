@@ -1,7 +1,7 @@
 {
   "name": "muse-english",
-  "version": "1.3.0",
-  "description": "Muse - AI-Powered English Vocabulary Learning Assistant",
+  "version": "1.4.0",
+  "description": "Muse - AI-Driven Intelligent English Vocabulary Learning Assistant",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",

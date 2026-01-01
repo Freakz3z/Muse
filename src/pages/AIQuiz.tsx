@@ -20,7 +20,7 @@ import { AIQuiz, QuizQuestion } from '../services/ai/types'
 type QuizState = 'setup' | 'loading' | 'playing' | 'result'
 
 export default function AIQuizPage() {
-  const { words, currentBook } = useAppStore()
+  const { words, currentBook, todayStats, updateTodayStats } = useAppStore()
   const [quizState, setQuizState] = useState<QuizState>('setup')
   const [quiz, setQuiz] = useState<AIQuiz | null>(null)
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -29,6 +29,7 @@ export default function AIQuizPage() {
   const [timeLeft, setTimeLeft] = useState(0)
   const [score, setScore] = useState(0)
   const [isConfigured, setIsConfigured] = useState(false)
+  const [sessionStartTime, setSessionStartTime] = useState<number>(0)
 
   // 配置选项
   const [questionCount, setQuestionCount] = useState(10)
@@ -61,10 +62,11 @@ export default function AIQuizPage() {
     setQuizState('loading')
     
     try {
-      // 随机选择单词
-      const wordList = words
+      // 随机选择单词（仅使用当前词库的单词）
+      const bookWords = currentBook ? words.filter(w => currentBook.wordIds.includes(w.id)) : words
+      const wordList = bookWords
         .sort(() => Math.random() - 0.5)
-        .slice(0, Math.min(questionCount * 2, words.length))
+        .slice(0, Math.min(questionCount * 2, bookWords.length))
         .map(w => w.word)
 
       const generatedQuiz = await aiService.generateQuiz(wordList, questionCount, selectedTypes)
@@ -79,6 +81,7 @@ export default function AIQuizPage() {
       setAnswers({})
       setScore(0)
       setShowAnswer(false)
+      setSessionStartTime(Date.now())
       setQuizState('playing')
     } catch (error) {
       console.error('生成测验失败:', error)
@@ -94,8 +97,8 @@ export default function AIQuizPage() {
     setAnswers(prev => ({ ...prev, [question.id]: answer }))
     setShowAnswer(true)
 
-    // 计算得分
-    if (answer === question.correctAnswer) {
+    // 计算得分（如果不是跳过）
+    if (answer !== '__skip__' && answer === question.correctAnswer) {
       setScore(prev => prev + Math.floor(quiz.totalScore / quiz.questions.length))
     }
   }
@@ -112,6 +115,11 @@ export default function AIQuizPage() {
   }
 
   const handleSubmitQuiz = () => {
+    // 计算学习时长（分钟）
+    const duration = Math.round((Date.now() - sessionStartTime) / 60000)
+    updateTodayStats({
+      studyTime: todayStats.studyTime + duration,
+    })
     setQuizState('result')
   }
 
@@ -244,7 +252,7 @@ export default function AIQuizPage() {
             </button>
 
             <p className="text-center text-gray-400 text-sm">
-              共 {words.length} 个单词可用于出题
+              共 {currentBook ? currentBook.wordCount : words.length} 个单词可用于出题
             </p>
           </div>
         )}
@@ -321,7 +329,6 @@ export default function AIQuizPage() {
 
           {/* 题目内容 */}
           <div className="p-6">
-            <div className="mb-2 text-sm text-gray-500">考查单词：{question.word}</div>
             <h3 className="text-lg font-medium text-gray-800 mb-6">{question.question}</h3>
 
             {/* 选项/输入 */}
@@ -377,6 +384,17 @@ export default function AIQuizPage() {
               </div>
             )}
 
+            {question.type === 'choice' && !showAnswer && (
+              <button
+                onClick={() => {
+                  handleAnswer('__skip__')
+                }}
+                className="mt-4 w-full py-2 text-gray-600 border-2 border-gray-300 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+              >
+                不会，查看答案
+              </button>
+            )}
+
             {(question.type === 'fill' || question.type === 'spelling' || question.type === 'translation') && (
               <div>
                 <input
@@ -401,6 +419,16 @@ export default function AIQuizPage() {
                     确认
                   </button>
                 )}
+                {!showAnswer && (
+                  <button
+                    onClick={() => {
+                      handleAnswer('__skip__')
+                    }}
+                    className="mt-3 ml-3 px-6 py-2 text-gray-600 border-2 border-gray-300 rounded-lg font-medium hover:bg-gray-50"
+                  >
+                    不会，查看答案
+                  </button>
+                )}
               </div>
             )}
 
@@ -410,13 +438,20 @@ export default function AIQuizPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 className={`mt-6 p-4 rounded-xl ${
+                  userAnswer === '__skip__' ? 'bg-gray-50' :
                   isCorrect ? 'bg-green-50' : 'bg-red-50'
                 }`}
               >
                 <div className={`flex items-center gap-2 font-medium mb-2 ${
+                  userAnswer === '__skip__' ? 'text-gray-700' :
                   isCorrect ? 'text-green-700' : 'text-red-700'
                 }`}>
-                  {isCorrect ? (
+                  {userAnswer === '__skip__' ? (
+                    <>
+                      <AlertCircle className="w-5 h-5" />
+                      已跳过
+                    </>
+                  ) : isCorrect ? (
                     <>
                       <CheckCircle2 className="w-5 h-5" />
                       回答正确！
@@ -428,7 +463,10 @@ export default function AIQuizPage() {
                     </>
                   )}
                 </div>
-                <p className={`text-sm ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
+                <p className={`text-sm ${
+                  userAnswer === '__skip__' ? 'text-gray-600' :
+                  isCorrect ? 'text-green-600' : 'text-red-600'
+                }`}>
                   正确答案：{question.correctAnswer}
                 </p>
                 <p className="text-gray-600 text-sm mt-2">{question.explanation}</p>
