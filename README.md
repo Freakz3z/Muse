@@ -100,15 +100,17 @@ npm run electron:build
 
 ## 🛠️ 技术栈
 
-- **Electron 28** - 跨平台桌面应用框架
-- **React 18** - UI 框架
-- **TypeScript** - 类型安全
-- **Vite 5** - 构建工具
-- **Tailwind CSS** - 样式框架
-- **Zustand** - 状态管理
-- **LocalForage** - 本地 IndexedDB 存储
-- **Recharts** - 图表库
-- **Framer Motion** - 动画库
+| 类别 | 技术 |
+|----------|------------|
+| 框架 | Electron 28 |
+| UI 库 | React 18 |
+| 语言 | TypeScript 5 |
+| 构建工具 | Vite 5 |
+| 样式 | Tailwind CSS |
+| 状态管理 | Zustand |
+| 存储 | LocalForage (IndexedDB) |
+| 图表 | Recharts |
+| 动画 | Framer Motion |
 
 ## 📁 项目结构
 
@@ -164,6 +166,14 @@ Muse_Electron/
 4. 点击 **测试连接** 验证配置
 5. 配置成功后，所有 AI 功能即可使用
 
+### 使用 Ollama (免费、本地运行)
+
+1. 安装 [Ollama](https://ollama.ai/)
+2. 下载模型：`ollama pull llama3` (或你喜欢的其他模型)
+3. 在 Muse 设置中，选择 **Ollama** 作为服务商
+4. 默认地址：`http://localhost:11434`
+5. 无需 API Key，点击测试连接即可！
+
 ### 学习模式
 
 1. **新词学习** - 学习新单词，可使用 AI 助手获取例句、词义解释、记忆技巧
@@ -183,17 +193,21 @@ Muse_Electron/
 ## ⌨️ 快捷键
 
 ### 全局快捷键
-- `Ctrl + Shift + M` - 显示/隐藏主窗口
-- `Ctrl + Shift + C` - 剪贴板翻译
+| 快捷键 | 功能 |
+|----------|--------|
+| `Ctrl + Shift + M` | 显示/隐藏主窗口 |
+| `Ctrl + Shift + C` | 剪贴板翻译 |
 
 ### 学习/复习快捷键（可自定义）
-- `Space` - 显示答案
-- `Q` - 上一个单词
-- `E` - 下一个单词
-- `D` - 标记认识
-- `A` - 标记不认识
-- `R` - 播放发音
-- `1-4` - 复习评分
+| 快捷键 | 功能 |
+|----------|--------|
+| `Space` | 显示答案 |
+| `Q` | 上一个单词 |
+| `E` | 下一个单词 |
+| `D` | 标记认识 |
+| `A` | 标记不认识 |
+| `R` | 播放发音 |
+| `1-4` | 复习评分 |
 
 ## 🎨 界面预览
 
@@ -217,132 +231,22 @@ Muse_Electron/
 - [ ] 学习社区功能
 - [ ] 语音识别练习
 
-## 📄 License
+## 🤝 参与贡献
 
-Apache 2.0 License
+欢迎提交 Pull Request 或 Issue！
 
----
+1. Fork 本项目
+2. 创建你的特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交你的改动 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启一个 Pull Request
 
-Made with ❤️ for English learners
+## 📄 开源协议
 
-### Build for Production
-
-```bash
-npm run electron:build
-```
-
-The installer will be generated in the `release` directory.
-
-## 🛠️ Tech Stack
-
-| Category | Technology |
-|----------|------------|
-| Framework | Electron 28 |
-| UI | React 18 |
-| Language | TypeScript 5 |
-| Build Tool | Vite 5 |
-| Styling | Tailwind CSS |
-| State Management | Zustand |
-| Storage | LocalForage (IndexedDB) |
-| Charts | Recharts |
-| Animation | Framer Motion |
-
-## 📁 Project Structure
-
-```
-Muse_Electron/
-├── electron/              # Electron main process
-│   ├── main.ts           # Main process entry
-│   └── preload.ts        # Preload script
-├── src/
-│   ├── components/       # Reusable components
-│   │   ├── AIAssistant.tsx    # AI assistant component
-│   │   └── WordCard.tsx       # Word flashcard
-│   ├── pages/            # Page components
-│   │   ├── Home.tsx      # Dashboard
-│   │   ├── Learn.tsx     # Learning page
-│   │   ├── Review.tsx    # Review page
-│   │   ├── Quiz.tsx      # Quiz page
-│   │   ├── AIQuiz.tsx    # AI Quiz page
-│   │   ├── AICoach.tsx   # AI Learning Coach
-│   │   ├── WordBook.tsx  # Vocabulary management
-│   │   ├── Statistics.tsx # Statistics page
-│   │   └── Settings.tsx  # Settings page
-│   ├── services/
-│   │   ├── ai/           # AI service
-│   │   └── dictionary/   # Dictionary API service
-│   ├── store/            # Zustand state management
-│   ├── storage/          # IndexedDB storage
-│   ├── hooks/            # Custom hooks
-│   ├── types/            # TypeScript types
-│   └── utils/            # Utility functions
-└── package.json
-```
-
-## 🎯 AI Configuration
-
-1. Go to **Settings** page
-2. In **AI Service Configuration** section, select your provider
-3. Enter your API Key (not required for local Ollama)
-4. Click **Test & Save** to verify the configuration
-5. Once configured, all AI features will be available
-
-### Using Ollama (Free, Local)
-
-1. Install [Ollama](https://ollama.ai/)
-2. Pull a model: `ollama pull llama3`
-3. In Muse settings, select "Ollama" as provider
-4. Default endpoint: `http://localhost:11434`
-5. No API key needed!
-
-## ⌨️ Keyboard Shortcuts
-
-### Global Shortcuts
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl + Shift + M` | Show/Hide main window |
-| `Ctrl + Shift + C` | Clipboard translation |
-
-### Learning Shortcuts (Customizable)
-| Shortcut | Action |
-|----------|--------|
-| `Space` | Show answer |
-| `Q` | Previous word |
-| `E` | Next word |
-| `D` | Mark as known |
-| `A` | Mark as unknown |
-| `R` | Play pronunciation |
-| `1-4` | Review rating |
-
-## 📝 Roadmap
-
-- [x] AI word explanations
-- [x] AI example sentences
-- [x] AI smart quiz
-- [x] AI learning suggestions
-- [x] Clipboard translation
-- [x] Custom shortcuts
-- [ ] Cloud sync
-- [ ] More vocabulary books
-- [ ] Learning community
-- [ ] Voice recognition practice
-
-## 🤝 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+本项目采用 [Apache 2.0](LICENSE) 开源协议。
 
 ---
 
 <p align="center">
-  Made with ❤️ for English learners worldwide
+  Made with ❤️ for English learners
 </p>
