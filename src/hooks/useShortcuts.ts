@@ -78,13 +78,22 @@ export function useShortcuts(handlers: ShortcutHandlers, enabled: boolean = true
   const { settings } = useAppStore()
   // 确保 shortcuts 有默认值
   const shortcuts = settings.shortcuts || defaultShortcuts
-  
+
   // 使用 ref 存储最新的 handlers，避免依赖变化导致重复绑定
   const handlersRef = useRef(handlers)
   handlersRef.current = handlers
-  
+
   const enabledRef = useRef(enabled)
   enabledRef.current = enabled
+
+  // 使用 ref 存储 shortcuts，确保能获取到最新的快捷键设置
+  const shortcutsRef = useRef(shortcuts)
+  shortcutsRef.current = shortcuts
+
+  // 当 shortcuts 变化时，更新 ref
+  useEffect(() => {
+    shortcutsRef.current = shortcuts
+  }, [shortcuts])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -97,44 +106,45 @@ export function useShortcuts(handlers: ShortcutHandlers, enabled: boolean = true
         return
       }
 
-      // 确保 shortcuts 存在
-      if (!shortcuts) return
+      // 获取最新的 shortcuts
+      const currentShortcuts = shortcutsRef.current
+      if (!currentShortcuts) return
 
       const code = e.code
       const currentHandlers = handlersRef.current
-      
+
       // 匹配快捷键并执行对应操作
-      if (code === shortcuts.showAnswer && currentHandlers.showAnswer) {
+      if (code === currentShortcuts.showAnswer && currentHandlers.showAnswer) {
         e.preventDefault()
         currentHandlers.showAnswer()
-      } else if (code === shortcuts.prevWord && currentHandlers.prevWord) {
+      } else if (code === currentShortcuts.prevWord && currentHandlers.prevWord) {
         e.preventDefault()
         currentHandlers.prevWord()
-      } else if (code === shortcuts.nextWord && currentHandlers.nextWord) {
+      } else if (code === currentShortcuts.nextWord && currentHandlers.nextWord) {
         e.preventDefault()
         currentHandlers.nextWord()
-      } else if (code === shortcuts.markKnown && currentHandlers.markKnown) {
+      } else if (code === currentShortcuts.markKnown && currentHandlers.markKnown) {
         e.preventDefault()
         currentHandlers.markKnown()
-      } else if (code === shortcuts.markUnknown && currentHandlers.markUnknown) {
+      } else if (code === currentShortcuts.markUnknown && currentHandlers.markUnknown) {
         e.preventDefault()
         currentHandlers.markUnknown()
-      } else if (code === shortcuts.playAudio && currentHandlers.playAudio) {
+      } else if (code === currentShortcuts.playAudio && currentHandlers.playAudio) {
         e.preventDefault()
         currentHandlers.playAudio()
-      } else if (code === shortcuts.rateEasy && currentHandlers.rateEasy) {
+      } else if (code === currentShortcuts.rateEasy && currentHandlers.rateEasy) {
         e.preventDefault()
         currentHandlers.rateEasy()
-      } else if (code === shortcuts.rateGood && currentHandlers.rateGood) {
+      } else if (code === currentShortcuts.rateGood && currentHandlers.rateGood) {
         e.preventDefault()
         currentHandlers.rateGood()
-      } else if (code === shortcuts.rateHard && currentHandlers.rateHard) {
+      } else if (code === currentShortcuts.rateHard && currentHandlers.rateHard) {
         e.preventDefault()
         currentHandlers.rateHard()
-      } else if (code === shortcuts.rateAgain && currentHandlers.rateAgain) {
+      } else if (code === currentShortcuts.rateAgain && currentHandlers.rateAgain) {
         e.preventDefault()
         currentHandlers.rateAgain()
-      } else if (code === shortcuts.toggleFloating && currentHandlers.toggleFloating) {
+      } else if (code === currentShortcuts.toggleFloating && currentHandlers.toggleFloating) {
         e.preventDefault()
         currentHandlers.toggleFloating()
       }
@@ -142,7 +152,7 @@ export function useShortcuts(handlers: ShortcutHandlers, enabled: boolean = true
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [shortcuts])
+  }, []) // 移除 shortcuts 依赖，使用 ref 来获取最新的值
 }
 
 // 快捷键提示组件 props

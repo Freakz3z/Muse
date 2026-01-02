@@ -112,6 +112,52 @@ export interface WordMeaningExplanation {
   difficultyLevel: 'beginner' | 'intermediate' | 'advanced';
 }
 
+// AI 智能学习计划类型
+export interface StudyPlan {
+  id: string;
+  createdAt: number;
+  status: 'active' | 'completed' | 'paused';
+
+  // 用户分析
+  userLevel: 'beginner' | 'intermediate' | 'advanced';
+  studyGoal: string;  // 学习目标描述
+  availableTime: number;  // 每日可用时间（分钟）
+  targetDate?: string;  // 目标完成日期
+
+  // 计划详情
+  planName: string;
+  totalWeeks: number;
+  currentWeek: number;
+
+  // 每日计划
+  dailyPlan: {
+    newWords: number;  // 每日新词数量
+    reviewWords: number;  // 每日复习数量
+    studyTime: number;  // 建议学习时长（分钟）
+    bestTime: string;  // 建议学习时段
+  };
+
+  // 每周里程碑
+  weeklyGoals: {
+    week: number;
+    targetWords: number;
+    description: string;
+  }[];
+
+  // 重点词汇领域
+  focusAreas: string[];
+  suggestedBooks: string[];  // 推荐词库
+
+  // 学习策略
+  strategies: string[];
+
+  // 预期结果
+  expectedOutcome: string;
+
+  // AI 建议
+  aiAdvice: string;
+}
+
 // 默认 AI 配置
 export const defaultAIConfig: AIConfig = {
   enabled: false,

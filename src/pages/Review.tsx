@@ -58,6 +58,8 @@ export default function Review() {
 
   const playAudio = useCallback(() => {
     if (!currentWord) return
+    // 取消当前正在播放的音频，防止重复播放
+    speechSynthesis.cancel()
     const utterance = new SpeechSynthesisUtterance(currentWord.word)
     utterance.lang = settings.pronunciation === 'us' ? 'en-US' : 'en-GB'
     utterance.rate = 0.9
@@ -253,13 +255,13 @@ export default function Review() {
           className="bg-white rounded-2xl shadow-lg overflow-hidden"
         >
           {/* 单词展示 */}
-          <div className="p-8 text-center border-b bg-gradient-to-br from-green-50 to-emerald-50">
+          <div className="p-8 text-center border-b">
             <h1 className="text-5xl font-bold text-gray-800 mb-4">{currentWord.word}</h1>
             <div className="flex items-center justify-center gap-4">
               <span className="text-gray-500 text-lg">{currentWord.phonetic.us}</span>
               <button
                 onClick={playAudio}
-                className="p-2 rounded-full bg-green-100 hover:bg-green-200 text-green-600 transition-colors"
+                className="p-2 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-500 transition-colors"
               >
                 <Volume2 className="w-5 h-5" />
               </button>
@@ -278,7 +280,7 @@ export default function Review() {
                 <div className="p-6 space-y-4">
                   {currentWord.meanings.map((meaning, index) => (
                     <div key={index} className="flex items-start gap-3">
-                      <span className="inline-block px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-medium">
+                      <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
                         {meaning.partOfSpeech}
                       </span>
                       <div>
@@ -306,18 +308,11 @@ export default function Review() {
                 <p className="text-center text-gray-500 text-sm mb-4">你记住这个单词了吗？</p>
                 <div className="grid grid-cols-4 gap-3">
                   <button
-                    onClick={() => handleResponse(false, 'again')}
-                    className="py-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-medium transition-colors text-sm flex flex-col items-center"
+                    onClick={() => handleResponse(true, 'easy')}
+                    className="py-3 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl font-medium transition-colors text-sm flex flex-col items-center"
                   >
-                    <span>忘记了</span>
-                    <span className="text-xs opacity-60 mt-1">{getShortcutDisplay(settings.shortcuts?.rateAgain || 'Digit4')}</span>
-                  </button>
-                  <button
-                    onClick={() => handleResponse(true, 'hard')}
-                    className="py-3 bg-orange-50 hover:bg-orange-100 text-orange-600 rounded-xl font-medium transition-colors text-sm flex flex-col items-center"
-                  >
-                    <span>有点难</span>
-                    <span className="text-xs opacity-60 mt-1">{getShortcutDisplay(settings.shortcuts?.rateHard || 'Digit3')}</span>
+                    <span>太简单</span>
+                    <span className="text-xs opacity-60 mt-1">{getShortcutDisplay(settings.shortcuts?.rateEasy || 'Digit1')}</span>
                   </button>
                   <button
                     onClick={() => handleResponse(true, 'good')}
@@ -327,18 +322,25 @@ export default function Review() {
                     <span className="text-xs opacity-60 mt-1">{getShortcutDisplay(settings.shortcuts?.rateGood || 'Digit2')}</span>
                   </button>
                   <button
-                    onClick={() => handleResponse(true, 'easy')}
-                    className="py-3 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl font-medium transition-colors text-sm flex flex-col items-center"
+                    onClick={() => handleResponse(true, 'hard')}
+                    className="py-3 bg-orange-50 hover:bg-orange-100 text-orange-600 rounded-xl font-medium transition-colors text-sm flex flex-col items-center"
                   >
-                    <span>太简单</span>
-                    <span className="text-xs opacity-60 mt-1">{getShortcutDisplay(settings.shortcuts?.rateEasy || 'Digit1')}</span>
+                    <span>有点难</span>
+                    <span className="text-xs opacity-60 mt-1">{getShortcutDisplay(settings.shortcuts?.rateHard || 'Digit3')}</span>
+                  </button>
+                  <button
+                    onClick={() => handleResponse(false, 'again')}
+                    className="py-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-medium transition-colors text-sm flex flex-col items-center"
+                  >
+                    <span>忘记了</span>
+                    <span className="text-xs opacity-60 mt-1">{getShortcutDisplay(settings.shortcuts?.rateAgain || 'Digit4')}</span>
                   </button>
                 </div>
               </div>
             ) : (
               <button
                 onClick={() => setShowAnswer(true)}
-                className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-medium hover:shadow-lg transition-shadow flex flex-col items-center"
+                className="w-full py-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl font-medium hover:shadow-lg transition-shadow flex flex-col items-center"
               >
                 <span>显示答案</span>
                 <span className="text-xs opacity-70 mt-1">{getShortcutDisplay(settings.shortcuts?.showAnswer || 'Space')}</span>

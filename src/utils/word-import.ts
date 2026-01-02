@@ -145,14 +145,16 @@ export async function importWords(
 
     for (const entry of entries) {
       try {
-        if (existingWordSet.has(entry.word)) {
+        if (entry.word && existingWordSet.has(entry.word)) {
           result.skipped++
           continue
         }
 
         const word = convertToWord(entry)
         await addWordFn(word)
-        existingWordSet.add(entry.word)
+        if (entry.word) {
+          existingWordSet.add(entry.word)
+        }
         result.imported++
       } catch (error) {
         result.errors.push(`导入 "${entry.word}" 失败`)

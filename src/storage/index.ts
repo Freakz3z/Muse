@@ -1,5 +1,6 @@
 import localforage from 'localforage';
 import { Word, LearningRecord, WordBook, UserSettings, StudyStats, UserProfile, QuizResult, StudySession, defaultShortcuts } from '../types';
+import { StudyPlan } from '../services/ai/types';
 
 // 初始化存储实例
 const wordsStore = localforage.createInstance({ name: 'muse', storeName: 'words' });
@@ -10,6 +11,7 @@ const statsStore = localforage.createInstance({ name: 'muse', storeName: 'stats'
 const profileStore = localforage.createInstance({ name: 'muse', storeName: 'profile' });
 const quizStore = localforage.createInstance({ name: 'muse', storeName: 'quiz' });
 const sessionStore = localforage.createInstance({ name: 'muse', storeName: 'session' });
+const studyPlanStore = localforage.createInstance({ name: 'muse', storeName: 'studyPlan' });
 
 // 单词操作
 export const wordStorage = {
@@ -267,5 +269,20 @@ export const sessionStorage = {
 
   async saveHistory(session: StudySession): Promise<void> {
     await sessionStore.setItem(session.id, session);
+  },
+};
+
+// 学习计划操作
+export const studyPlanStorage = {
+  async getActive(): Promise<StudyPlan | null> {
+    return await studyPlanStore.getItem('active');
+  },
+
+  async save(plan: StudyPlan): Promise<void> {
+    await studyPlanStore.setItem('active', plan);
+  },
+
+  async delete(): Promise<void> {
+    await studyPlanStore.removeItem('active');
   },
 };

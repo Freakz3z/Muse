@@ -29,6 +29,8 @@ export default function WordCard({
 
   const playAudio = (e: React.MouseEvent) => {
     e.stopPropagation()
+    // 取消当前正在播放的音频，防止重复播放
+    speechSynthesis.cancel()
     const utterance = new SpeechSynthesisUtterance(word.word)
     utterance.lang = pronunciation === 'us' ? 'en-US' : 'en-GB'
     utterance.rate = 0.85

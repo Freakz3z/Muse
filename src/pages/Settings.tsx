@@ -89,15 +89,18 @@ export default function Settings() {
   // 快捷键编辑处理
   const handleShortcutKeyDown = useCallback((e: KeyboardEvent) => {
     if (!editingShortcut) return
-    
+
     e.preventDefault()
     const code = e.code
-    
+
     // 忽略修饰键单独按下
     if (['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) return
-    
+
+    // 确保 shortcuts 存在，使用默认值作为后备
+    const currentShortcuts = settings.shortcuts || defaultShortcuts
+
     // 更新快捷键
-    const newShortcuts = { ...settings.shortcuts, [editingShortcut]: code }
+    const newShortcuts = { ...currentShortcuts, [editingShortcut]: code }
     updateSettings({ shortcuts: newShortcuts })
     setEditingShortcut(null)
   }, [editingShortcut, settings.shortcuts, updateSettings])
@@ -577,7 +580,7 @@ export default function Settings() {
           <div className="flex-1 space-y-3">
             <div>
               <h3 className="text-xl font-bold text-gray-800">Muse</h3>
-              <p className="text-sm text-gray-500">v1.4.4</p>
+              <p className="text-sm text-gray-500">v1.5.0</p>
             </div>
             
             <p className="text-gray-600 leading-relaxed">

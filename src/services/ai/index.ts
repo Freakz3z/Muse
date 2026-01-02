@@ -1,4 +1,4 @@
-import { AIProvider, ChatMessage, AIResponse, WordExplanation, AIConfig, defaultAIConfig, QuizQuestion, AIQuiz, StudySuggestion, GeneratedExample, WordMeaningExplanation } from './types';
+import { AIProvider, ChatMessage, AIResponse, WordExplanation, AIConfig, defaultAIConfig, QuizQuestion, AIQuiz, StudySuggestion, GeneratedExample, WordMeaningExplanation, StudyPlan } from './types';
 import { Word } from '../../types';
 
 // 通用 AI 客户端基类
@@ -707,6 +707,122 @@ ${i > 0 ? `注意：这是第 ${i + 1} 批单词，请不要与之前的单词�
     }
 
     return allWords;
+  }
+
+  // AI 生成智能学习计划
+  async generateStudyPlan(params: {
+    currentLevel: 'beginner' | 'intermediate' | 'advanced';
+    studyGoal: string;
+    availableTime: number;  // 每日可用时间（分钟）
+    targetDate?: string;
+    currentWordCount?: number;
+    targetWordCount?: number;
+    focusAreas?: string[];
+  }): Promise<StudyPlan> {
+    const response = await this.chat([
+      {
+        role: 'system',
+        content: `你是一个专业的英语学习规划师。请根据用户的情况，制定一个科学、可行的英语单词学习计划。
+
+请以JSON格式返回学习计划：
+{
+  "userLevel": "用户当前水平",
+  "studyGoal": "学习目标简述",
+  "availableTime": 每日可用时间（分钟）,
+  "targetDate": "目标完成日期（如提供）",
+  "planName": "计划名称",
+  "totalWeeks": 计划总周数,
+  "currentWeek": 1,
+  "dailyPlan": {
+    "newWords": 每日新词数量,
+    "reviewWords": 每日复习数量,
+    "studyTime": 建议学习时长（分钟）,
+    "bestTime": "建议学习时段"
+  },
+  "weeklyGoals": [
+    {
+      "week": 周数,
+      "targetWords": 累计目标词汇量,
+      "description": "本周目标和重点"
+    }
+  ],
+  "focusAreas": ["重点领域1", "重点领域2"],
+  "suggestedBooks": ["推荐词库1", "推荐词库2"],
+  "strategies": ["学习策略1", "学习策略2", "学习策略3"],
+  "expectedOutcome": "预期达到的效果描述",
+  "aiAdvice": "给用户的建议和鼓励"
+}
+
+要求：
+1. 计划要切实可行，不要让用户感到压力过大
+2. 考虑艾宾浩斯记忆曲线，合理安排新词学习和复习
+3. 每周目标要有递进性
+4. 策略要具体实用
+5. 只返回JSON，不要其他内容`
+      },
+      {
+        role: 'user',
+        content: `请为我制定学习计划：
+- 当前水平：${params.currentLevel}
+- 学习目标：${params.studyGoal}
+- 每日可用时间：${params.availableTime}分钟
+${params.targetDate ? `- 目标完成日期：${params.targetDate}` : ''}
+${params.currentWordCount ? `- 当前词汇量：约${params.currentWordCount}个` : ''}
+${params.targetWordCount ? `- 目标词汇量：${params.targetWordCount}个` : ''}
+${params.focusAreas?.length ? `- 重点领域：${params.focusAreas.join(', ')}` : ''}`
+      }
+    ]);
+
+    try {
+      let jsonStr = response.content.trim();
+      const codeBlockMatch = jsonStr.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+      if (codeBlockMatch) {
+        jsonStr = codeBlockMatch[1];
+      }
+
+      const planData = JSON.parse(jsonStr);
+      return {
+        id: `plan_${Date.now()}`,
+        createdAt: Date.now(),
+        status: 'active',
+        ...planData,
+      };
+    } catch (error) {
+      console.error('解析学习计划响应失败:', error);
+      // 返回基础计划
+      return {
+        id: `plan_${Date.now()}`,
+        createdAt: Date.now(),
+        status: 'active',
+        userLevel: params.currentLevel,
+        studyGoal: params.studyGoal,
+        availableTime: params.availableTime,
+        targetDate: params.targetDate,
+        planName: '个性化学习计划',
+        totalWeeks: 8,
+        currentWeek: 1,
+        dailyPlan: {
+          newWords: 20,
+          reviewWords: 40,
+          studyTime: params.availableTime,
+          bestTime: '每天固定时段',
+        },
+        weeklyGoals: Array.from({ length: 8 }, (_, i) => ({
+          week: i + 1,
+          targetWords: (i + 1) * 150,
+          description: `第${i + 1}周：继续稳步学习`,
+        })),
+        focusAreas: params.focusAreas || ['日常词汇'],
+        suggestedBooks: ['基础词汇'],
+        strategies: [
+          '每天坚持学习新词',
+          '及时复习旧词',
+          '多读多写加深印象',
+        ],
+        expectedOutcome: '稳步提升词汇量',
+        aiAdvice: response.content,
+      };
+    }
   }
 }
 

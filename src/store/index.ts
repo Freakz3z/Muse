@@ -1,23 +1,25 @@
 import { create } from 'zustand';
-import { 
-  Word, 
-  LearningRecord, 
-  WordBook, 
-  UserSettings, 
-  UserProfile, 
+import {
+  Word,
+  LearningRecord,
+  WordBook,
+  UserSettings,
+  UserProfile,
   MasteryLevel,
   StudyStats,
   StudySession,
   defaultShortcuts
 } from '../types';
-import { 
-  wordStorage, 
-  recordStorage, 
-  bookStorage, 
-  settingsStorage, 
+import { StudyPlan } from '../services/ai/types';
+import {
+  wordStorage,
+  recordStorage,
+  bookStorage,
+  settingsStorage,
   profileStorage,
   statsStorage,
-  sessionStorage
+  sessionStorage,
+  studyPlanStorage
 } from '../storage';
 import { calculateNextReview, calculateSM2 } from '../utils/spaced-repetition';
 import { initializeBuiltinData } from '../data/words';
@@ -33,6 +35,7 @@ interface AppState {
   isLoading: boolean;
   todayStats: StudyStats;
   currentSession: StudySession | null;
+  studyPlan: StudyPlan | null;
   
   // 初始化
   initialize: () => Promise<void>;
@@ -75,6 +78,12 @@ interface AppState {
   startSession: (mode: 'learn' | 'review' | 'quiz', bookId: string) => Promise<void>;
   endSession: () => Promise<void>;
   recordWordResult: (wordId: string, correct: boolean) => void;
+
+  // 学习计划操作
+  loadStudyPlan: () => Promise<void>;
+  saveStudyPlan: (plan: StudyPlan) => Promise<void>;
+  deleteStudyPlan: () => Promise<void>;
+  updateStudyPlanWeek: (week: number) => Promise<void>;
 }
 
 const getDefaultSettings = (): UserSettings => ({
@@ -109,13 +118,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     correctRate: 0,
   },
   currentSession: null,
+  studyPlan: null,
   
   initialize: async () => {
     set({ isLoading: true });
-    
+
     // 记录开始时间
     const startTime = Date.now();
-    
+
     // 首先初始化内置数据
     await initializeBuiltinData(wordStorage, bookStorage);
     // 然后加载所有数据
@@ -126,6 +136,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       get().loadSettings(),
       get().loadProfile(),
       get().loadTodayStats(),
+      get().loadStudyPlan(),
     ]);
 
     // 计算已消耗时间
@@ -480,5 +491,35 @@ export const useAppStore = create<AppState>((set, get) => ({
       
       return { currentSession: session };
     });
+  },
+
+  // 学习计划操作
+  loadStudyPlan: async () => {
+    const plan = await studyPlanStorage.getActive();
+    set({ studyPlan: plan });
+  },
+
+  saveStudyPlan: async (plan) => {
+    await studyPlanStorage.save(plan);
+    set({ studyPlan: plan });
+  },
+
+  deleteStudyPlan: async () => {
+    await studyPlanStorage.delete();
+    set({ studyPlan: null });
+  },
+
+  updateStudyPlanWeek: async (week) => {
+    const { studyPlan } = get();
+    if (!studyPlan) return;
+
+    const status: 'active' | 'completed' | 'paused' = week >= studyPlan.totalWeeks ? 'completed' : 'active';
+    const updatedPlan: StudyPlan = {
+      ...studyPlan,
+      currentWeek: week,
+      status,
+    };
+    await studyPlanStorage.save(updatedPlan);
+    set({ studyPlan: updatedPlan });
   },
 }));
