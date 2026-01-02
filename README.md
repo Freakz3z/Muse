@@ -1,22 +1,22 @@
-# Muse - AI-Powered English Vocabulary Learning Assistant 🎓
+# Muse - AI 驱动的英语单词学习助手 🎓
 
 <p align="center">
   <img src="public/Muse.png" alt="Muse Logo" width="128" height="128">
 </p>
 
 <p align="center">
-  <strong>An AI-driven intelligent English vocabulary learning assistant</strong>
+  <strong>AI 驱动的智能英语学习助手</strong>
 </p>
 
 <p align="center">
-  Combining advanced AI technology with proven learning methods to revolutionize your vocabulary learning experience
+  融合先进 AI 技术与科学学习方法，彻底变革你的单词学习体验
 </p>
 
 <p align="center">
-  <a href="./README_zh-CN.md">中文文档</a> •
-  <a href="#features">Features</a> •
-  <a href="#quick-start">Quick Start</a> •
-  <a href="#ai-configuration">AI Configuration</a>
+  <a href="./README_EN.md">English</a> •
+  <a href="#功能特点">功能特点</a> •
+  <a href="#快速开始">快速开始</a> •
+  <a href="#ai-功能配置">AI 配置</a>
 </p>
 
 <p align="center">
@@ -24,7 +24,7 @@
   <img src="https://img.shields.io/badge/React-18.2.0-61DAFB?logo=react" alt="React">
   <img src="https://img.shields.io/badge/TypeScript-5.3-3178C6?logo=typescript" alt="TypeScript">
   <img src="https://img.shields.io/badge/Vite-5.0-646CFF?logo=vite" alt="Vite">
-  <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
+  <img src="https://img.shields.io/badge/License-Apache_2.0-blue" alt="License">
 </p>
 
 <p align="center">
@@ -35,74 +35,202 @@
 
 ---
 
-**Muse** is an AI-driven intelligent English vocabulary learning assistant built with Electron + React + TypeScript. It leverages cutting-edge AI technology to provide personalized learning experiences, smart content generation, and adaptive study plans, making vocabulary learning more efficient and engaging.
+**Muse** 是一款基于 Electron + React + TypeScript 开发的 **AI 驱动的智能英语学习助手**。它利用先进的 AI 技术为用户提供个性化学习体验、智能内容生成和自适应学习计划，让单词学习变得更高效、更有趣。
 
-## 🌟 Core Philosophy
+## 🌟 核心理念
 
-**AI-Driven Intelligent Learning** - Muse integrates AI capabilities throughout the entire learning process:
-- 🧠 **Intelligent Content Generation** - AI creates contextual examples, explanations, and memory tips
-- 🎯 **Personalized Learning Paths** - AI analyzes your progress and provides customized study plans
-- ✨ **Adaptive Assessment** - AI generates dynamic quizzes tailored to your vocabulary level
-- 📈 **Smart Progress Tracking** - AI coaches provide data-driven insights and recommendations
+**AI 驱动的智能学习** - Muse 将 AI 能力贯穿于整个学习流程：
+- 🧠 **智能内容生成** - AI 创建场景化例句、深度解释和记忆技巧
+- 🎯 **个性化学习路径** - AI 分析你的进度并提供定制学习计划
+- ✨ **自适应考核** - AI 生成适应你词汇水平的动态测验
+- 📈 **智能进度跟踪** - AI 教练提供数据驱动的洞察和建议
 
-## ✨ Features
+## ✨ 功能特点
 
-### 📚 Core Learning Features
-- **Flashcard Learning** - Interactive flip-card experience with phonetics, definitions, and examples
-- **Smart Review** - Spaced repetition based on SM-2 algorithm (Ebbinghaus forgetting curve)
-- **Word Quizzes** - Multiple choice and spelling quiz modes
-- **Learning Statistics** - Visual progress tracking, accuracy rates, and learning curves
-- **Vocabulary Books** - Built-in word lists + JSON import for custom vocabularies
+### 📚 核心学习功能
+- **单词学习** - 卡片翻转式学习体验，支持音标、释义、例句展示
+- **智能复习** - 基于 SM-2 艾宾浩斯记忆曲线的间隔重复算法
+- **单词测验** - 选择题、拼写题两种测验模式
+- **学习统计** - 可视化学习进度、正确率、学习曲线
+- **词库管理** - 内置多套词库 + 支持 JSON 导入自定义词库
 
-### 🤖 AI-Powered Features
-- **AI Example Sentences** - Generate authentic, practical example sentences with Chinese translations
-- **AI Word Explanations** - Deep analysis of word meanings, usage tips, common mistakes, and cultural context
-- **AI Memory Tips** - Intelligent generation of mnemonics, etymology analysis, and memory tricks
-- **AI Smart Quiz** - AI generates personalized quiz questions based on your vocabulary
-- **AI Learning Coach** - Analyzes your learning data to provide personalized suggestions and daily plans
-- **Word Search** - Search any word and get AI-powered detailed analysis
+### 🤖 AI 智能功能
+- **AI 智能例句** - 根据单词生成地道实用的例句，附带中文翻译
+- **AI 词义解释** - 深度解析单词含义、用法要点、常见错误、文化背景
+- **AI 记忆技巧** - 智能生成联想记忆、词根分析等记忆技巧
+- **AI 智能测验** - AI 根据词库自动生成个性化测验题目
+- **AI 学习教练** - 分析学习数据，提供个性化学习建议和每日计划
+- **单词搜索** - 搜索任意单词并获取 AI 深度分析
 
-### 🎯 Supported AI Services
-| Provider | Models | API Key Required |
-|----------|--------|------------------|
-| **OpenAI** | GPT-4o-mini, GPT-4o, etc. | ✅ Yes |
-| **DeepSeek** | DeepSeek-Chat | ✅ Yes |
-| **Zhipu AI** | GLM-4-Flash | ✅ Yes |
-| **Ollama** | Llama3, Mistral, etc. | ❌ No (Local) |
-| **Custom** | Any OpenAI-compatible API | Depends |
+### 🎯 支持的 AI 服务
+- **OpenAI** - GPT-4o-mini, GPT-4o 等模型
+- **DeepSeek** - DeepSeek-Chat 等国产大模型
+- **智谱 AI** - GLM-4-Flash 等模型
+- **Ollama** - 本地运行的开源模型（无需 API Key）
+- **自定义** - 支持任何 OpenAI 兼容 API
 
-### 📖 Built-in Vocabulary Books
-- **Basic Vocabulary** (~440 words) - Essential high-frequency words
-- **CET-4 Core** (~400 words) - College English Test Level 4
-- **CET-6 Advanced** (~400 words) - College English Test Level 6
-- **IELTS Vocabulary** (~400 words) - IELTS exam high-frequency words
-- **TOEFL Vocabulary** (~400 words) - TOEFL exam essential words
+### 📖 内置词库
+- 基础词汇（~440词）- 入门高频词汇
+- CET-4 核心词汇（~400词）- 大学四级必备
+- CET-6 进阶词汇（~400词）- 大学六级核心
+- 雅思词汇（~400词）- IELTS 考试高频词
+- 托福词汇（~400词）- TOEFL 考试必备词
 
-Word details are dynamically loaded via Free Dictionary API, including phonetics, definitions, and examples.
+词汇详情通过 Free Dictionary API 动态加载，包含音标、释义、例句等。
 
-## 🚀 Quick Start
+## 🚀 快速开始
 
-### Prerequisites
+### 环境要求
 
 - Node.js 18+
-- npm or yarn
+- npm 或 yarn
 
-### Installation
+### 安装依赖
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/Muse_Electron.git
-cd Muse_Electron
-
-# Install dependencies
 npm install
 ```
 
-### Development
+### 开发模式
 
 ```bash
 npm run electron:dev
 ```
+
+### 构建应用
+
+```bash
+npm run electron:build
+```
+
+构建完成后，安装包将在 `release` 目录中生成。
+
+## 🛠️ 技术栈
+
+- **Electron 28** - 跨平台桌面应用框架
+- **React 18** - UI 框架
+- **TypeScript** - 类型安全
+- **Vite 5** - 构建工具
+- **Tailwind CSS** - 样式框架
+- **Zustand** - 状态管理
+- **LocalForage** - 本地 IndexedDB 存储
+- **Recharts** - 图表库
+- **Framer Motion** - 动画库
+
+## 📁 项目结构
+
+```
+Muse_Electron/
+├── electron/              # Electron 主进程
+│   ├── main.ts           # 主进程入口
+│   └── preload.ts        # 预加载脚本
+├── src/
+│   ├── components/       # 通用组件
+│   │   ├── AIAssistant.tsx    # AI 助手组件
+│   │   ├── WordCard.tsx       # 单词卡片
+│   │   └── ...
+│   ├── pages/            # 页面组件
+│   │   ├── Home.tsx      # 首页
+│   │   ├── Learn.tsx     # 学习页面
+│   │   ├── Review.tsx    # 复习页面
+│   │   ├── Quiz.tsx      # 测验页面
+│   │   ├── AIQuiz.tsx    # AI 测验页面
+│   │   ├── AICoach.tsx   # AI 学习教练
+│   │   ├── WordBook.tsx  # 词库管理
+│   │   ├── Statistics.tsx # 统计页面
+│   │   └── Settings.tsx  # 设置页面
+│   ├── services/
+│   │   ├── ai/           # AI 服务
+│   │   │   ├── index.ts  # AI 服务核心
+│   │   │   └── types.ts  # AI 类型定义
+│   │   └── dictionary/   # 词典 API 服务
+│   ├── store/            # Zustand 状态管理
+│   ├── storage/          # IndexedDB 数据存储
+│   ├── hooks/            # 自定义 Hooks
+│   ├── types/            # TypeScript 类型
+│   ├── utils/            # 工具函数
+│   └── data/             # 内置数据
+└── package.json
+```
+
+## 🎯 核心功能说明
+
+### 间隔重复算法 (SM-2)
+
+应用使用 SM-2 算法来安排复习时间，根据用户对单词的掌握程度动态调整复习间隔：
+
+- 回答质量 0-5 分
+- 易度因子 (EF) 动态调整
+- 智能计算下次复习时间
+
+### AI 功能配置
+
+1. 进入 **设置** 页面
+2. 在 **AI 服务配置** 区域选择服务商
+3. 填入 API Key（Ollama 本地运行不需要）
+4. 点击 **测试连接** 验证配置
+5. 配置成功后，所有 AI 功能即可使用
+
+### 学习模式
+
+1. **新词学习** - 学习新单词，可使用 AI 助手获取例句、词义解释、记忆技巧
+2. **复习模式** - 复习到期单词，巩固记忆
+3. **普通测验** - 选择题/拼写题测验
+4. **AI 测验** - AI 根据你的词库智能出题
+5. **AI 教练** - 获取个性化学习建议
+
+### 数据存储
+
+所有数据本地存储，使用 IndexedDB：
+- 单词数据
+- 学习记录
+- 用户设置
+- 学习统计
+
+## ⌨️ 快捷键
+
+### 全局快捷键
+- `Ctrl + Shift + M` - 显示/隐藏主窗口
+- `Ctrl + Shift + C` - 剪贴板翻译
+
+### 学习/复习快捷键（可自定义）
+- `Space` - 显示答案
+- `Q` - 上一个单词
+- `E` - 下一个单词
+- `D` - 标记认识
+- `A` - 标记不认识
+- `R` - 播放发音
+- `1-4` - 复习评分
+
+## 🎨 界面预览
+
+应用采用现代化的 UI 设计：
+- 简洁的侧边导航
+- 卡片翻转动画
+- 渐变色主题
+- AI 功能紫色系配色
+- 响应式布局
+
+## 📝 开发计划
+
+- [x] AI 智能释义生成
+- [x] AI 例句生成
+- [x] AI 智能测验
+- [x] AI 学习建议
+- [x] 剪贴板翻译
+- [x] 自定义快捷键
+- [ ] 云端数据同步
+- [ ] 更多词库支持
+- [ ] 学习社区功能
+- [ ] 语音识别练习
+
+## 📄 License
+
+Apache 2.0 License
+
+---
+
+Made with ❤️ for English learners
 
 ### Build for Production
 

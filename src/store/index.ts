@@ -106,6 +106,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   initialize: async () => {
     set({ isLoading: true });
+    
+    // 记录开始时间
+    const startTime = Date.now();
+    
     // 首先初始化内置数据
     await initializeBuiltinData(wordStorage, bookStorage);
     // 然后加载所有数据
@@ -117,6 +121,16 @@ export const useAppStore = create<AppState>((set, get) => ({
       get().loadProfile(),
       get().loadTodayStats(),
     ]);
+
+    // 计算已消耗时间
+    const elapsedTime = Date.now() - startTime;
+    // 确保至少展示 2.5 秒的启动动画
+    const minDisplayTime = 2500;
+    
+    if (elapsedTime < minDisplayTime) {
+      await new Promise(resolve => setTimeout(resolve, minDisplayTime - elapsedTime));
+    }
+
     set({ isLoading: false });
   },
   
