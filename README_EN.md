@@ -55,12 +55,12 @@
 - **Vocabulary Books** - Built-in word lists + JSON import for custom vocabularies
 
 ### 🤖 AI-Powered Features
-- **AI Example Sentences** - Generate authentic, practical example sentences with Chinese translations
-- **AI Word Explanations** - Deep analysis of word meanings, usage tips, common mistakes, and cultural context
-- **AI Memory Tips** - Intelligent generation of mnemonics, etymology analysis, and memory tricks
-- **AI Smart Quiz** - AI generates personalized quiz questions based on your vocabulary
-- **AI Learning Coach** - Analyzes your learning data to provide personalized suggestions and daily plans
-- **Word Search** - Search any word and get AI-powered detailed analysis
+- **Seamless Integration** - AI-generated content (deep explanations, contextual examples) is embedded directly into flashcards without manual triggering
+- **AI Word Generation** - Automatically generate words based on themes (e.g., "Business English", "Environmental Protection") and batch import them
+- **AI Learning Coach** - Provides personalized learning suggestions, progress analysis, and insights into weak areas
+- **AI Smart Quiz** - Generates dynamic quiz questions in real-time based on your vocabulary level
+- **AI Deep Analysis** - Get AI-driven detailed analysis (etymology, usage, confused words) when searching for words
+- **Smart Data Enrichment** - Automatically detects and fills in missing phonetics, translations, and parts of speech
 
 ### 🎯 Supported AI Services
 | Provider | Models | API Key Required |
@@ -70,13 +70,6 @@
 | **Zhipu AI** | GLM-4-Flash | ✅ Yes |
 | **Ollama** | Llama3, Mistral, etc. | ❌ No (Local) |
 | **Custom** | Any OpenAI-compatible API | Depends |
-
-### 📖 Built-in Vocabulary Books
-- **Basic Vocabulary** (~440 words) - Essential high-frequency words
-- **CET-4 Core** (~400 words) - College English Test Level 4
-- **CET-6 Advanced** (~400 words) - College English Test Level 6
-- **IELTS Vocabulary** (~400 words) - IELTS exam high-frequency words
-- **TOEFL Vocabulary** (~400 words) - TOEFL exam essential words
 
 Word details are dynamically loaded via Free Dictionary API, including phonetics, definitions, and examples.
 
