@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
+import { Analytics } from '@vercel/analytics/react'
 import { useAppStore } from './store'
 import Layout from './components/Layout'
 import Home from './pages/Home'
@@ -44,6 +45,7 @@ function App() {
           <Route path="settings" element={<Settings />} />
         </Route>
       </Routes>
+      <Analytics />
     </>
   )
 }
