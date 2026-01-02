@@ -2,10 +2,9 @@ import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
 
 interface SplashScreenProps {
-  onFinish?: () => void;
 }
 
-export default function SplashScreen({ onFinish }: SplashScreenProps) {
+export default function SplashScreen({}: SplashScreenProps) {
   return (
     <motion.div
       className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 overflow-hidden"
