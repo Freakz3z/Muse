@@ -637,16 +637,23 @@ ${stats.weakWords?.length ? `- 薄弱单词：${stats.weakWords.join(', ')}` : '
       return [];
     }
 
-    try {
-      const response = await this.chat([
-        {
-          role: 'system',
-          content: '你是一个专业的英语教学专家。请根据用户的要求生成一批相关的英语单词。'
-        },
-        {
-          role: 'user',
-          content: `请根据以下要求生成 ${count} 个英语单词：
+    const BATCH_SIZE = 10;
+    const batches = Math.ceil(count / BATCH_SIZE);
+    const allWords: Partial<Word>[] = [];
+
+    for (let i = 0; i < batches; i++) {
+      const currentBatchCount = Math.min(BATCH_SIZE, count - i * BATCH_SIZE);
+      try {
+        const response = await this.chat([
+          {
+            role: 'system',
+            content: '你是一个专业的英语教学专家。请根据用户的要求生成一批相关的英语单词。'
+          },
+          {
+            role: 'user',
+            content: `请根据以下要求生成 ${currentBatchCount} 个英语单词：
 要求：${prompt}
+${i > 0 ? `注意：这是第 ${i + 1} 批单词，请不要与之前的单词重复。` : ''}
 
 请以JSON数组格式返回，每个对象包含以下字段：
 {
@@ -671,21 +678,27 @@ ${stats.weakWords?.length ? `- 薄弱单词：${stats.weakWords.join(', ')}` : '
 要求：
 1. frequency 只能是 "high", "medium", "low" 之一。
 2. 只返回JSON数组，不要其他解释。`
-        }
-      ]);
+          }
+        ]);
 
-      let jsonStr = response.content.trim();
-      const codeBlockMatch = jsonStr.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
-      if (codeBlockMatch) {
-        jsonStr = codeBlockMatch[1];
+        let jsonStr = response.content.trim();
+        const codeBlockMatch = jsonStr.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+        if (codeBlockMatch) {
+          jsonStr = codeBlockMatch[1];
+        }
+        
+        const data = JSON.parse(jsonStr);
+        if (Array.isArray(data)) {
+          allWords.push(...data);
+        }
+      } catch (error) {
+        console.error(`AI 生成第 ${i + 1} 批单词失败:`, error);
+        // 如果第一批就失败了，直接返回空；否则返回已经生成的
+        if (i === 0) return [];
       }
-      
-      const data = JSON.parse(jsonStr);
-      return Array.isArray(data) ? data : [];
-    } catch (error) {
-      console.error('AI 生成单词失败:', error);
-      return [];
     }
+
+    return allWords;
   }
 }
 

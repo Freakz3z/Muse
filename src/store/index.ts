@@ -52,7 +52,9 @@ interface AppState {
   loadBooks: () => Promise<void>;
   selectBook: (bookId: string) => Promise<void>;
   createBook: (book: Omit<WordBook, 'id'>) => Promise<void>;
+  deleteBook: (bookId: string) => Promise<void>;
   addWordToBook: (bookId: string, wordId: string) => Promise<void>;
+  removeWordFromBook: (bookId: string, wordId: string) => Promise<void>;
   batchAddWordsToBook: (bookId: string, words: Word[]) => Promise<void>;
   
   // 设置操作
@@ -229,10 +231,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   loadBooks: async () => {
     const books = await bookStorage.getAll();
-    set({ books });
+    // 确保 wordCount 准确
+    const updatedBooks = books.map(book => ({
+      ...book,
+      wordCount: book.wordIds.length
+    }));
+    set({ books: updatedBooks });
     // 默认选择第一个词库
-    if (books.length > 0 && !get().currentBook) {
-      set({ currentBook: books[0] });
+    if (updatedBooks.length > 0 && !get().currentBook) {
+      set({ currentBook: updatedBooks[0] });
     }
   },
   
@@ -251,6 +258,21 @@ export const useAppStore = create<AppState>((set, get) => ({
     await bookStorage.save(book);
     set((state) => ({ books: [...state.books, book] }));
   },
+
+  deleteBook: async (bookId) => {
+    await bookStorage.delete(bookId);
+    set((state) => {
+      const newBooks = state.books.filter(b => b.id !== bookId);
+      let newCurrentBook = state.currentBook;
+      if (state.currentBook?.id === bookId) {
+        newCurrentBook = newBooks.length > 0 ? newBooks[0] : null;
+      }
+      return {
+        books: newBooks,
+        currentBook: newCurrentBook
+      };
+    });
+  },
   
   addWordToBook: async (bookId, wordId) => {
     const book = await bookStorage.getById(bookId);
@@ -264,17 +286,50 @@ export const useAppStore = create<AppState>((set, get) => ({
       }));
     }
   },
-  
-  batchAddWordsToBook: async (bookId, words) => {
-    // 1. 保存所有单词到 wordStorage
-    await wordStorage.saveMany(words);
-    
-    // 2. 更新词库
+
+  removeWordFromBook: async (bookId, wordId) => {
     const book = await bookStorage.getById(bookId);
     if (book) {
-      const newWordIds = words.map(w => w.id);
-      // 过滤掉已经存在的单词 ID
-      const uniqueNewWordIds = newWordIds.filter(id => !book.wordIds.includes(id));
+      book.wordIds = book.wordIds.filter(id => id !== wordId);
+      book.wordCount = book.wordIds.length;
+      await bookStorage.save(book);
+      set((state) => ({
+        books: state.books.map(b => b.id === bookId ? book : b),
+        currentBook: state.currentBook?.id === bookId ? book : state.currentBook,
+      }));
+    }
+  },
+  
+  batchAddWordsToBook: async (bookId, words) => {
+    // 1. 获取现有单词以进行去重检查
+    const existingWords = await wordStorage.getAll();
+    const existingWordMap = new Map(existingWords.map(w => [w.word.toLowerCase(), w.id]));
+    
+    const finalWordsToAdd: Word[] = [];
+    const wordIdsToAddToBook: string[] = [];
+
+    for (const wordData of words) {
+      const lowerWord = wordData.word.toLowerCase();
+      if (existingWordMap.has(lowerWord)) {
+        // 如果单词已存在，只记录其 ID 用于加入词库
+        wordIdsToAddToBook.push(existingWordMap.get(lowerWord)!);
+      } else {
+        // 如果是全新单词，保存并记录 ID
+        finalWordsToAdd.push(wordData);
+        wordIdsToAddToBook.push(wordData.id);
+      }
+    }
+
+    // 2. 保存真正的新单词到 wordStorage
+    if (finalWordsToAdd.length > 0) {
+      await wordStorage.saveMany(finalWordsToAdd);
+    }
+    
+    // 3. 更新词库
+    const book = await bookStorage.getById(bookId);
+    if (book) {
+      // 过滤掉词库中已经存在的单词 ID
+      const uniqueNewWordIds = wordIdsToAddToBook.filter(id => !book.wordIds.includes(id));
       
       if (uniqueNewWordIds.length > 0) {
         book.wordIds.push(...uniqueNewWordIds);
@@ -282,7 +337,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         await bookStorage.save(book);
         
         set((state) => ({
-          words: [...state.words, ...words.filter(w => !state.words.some(sw => sw.id === w.id))],
+          words: [...state.words, ...finalWordsToAdd],
           books: state.books.map(b => b.id === bookId ? book : b),
           currentBook: state.currentBook?.id === bookId ? book : state.currentBook,
         }));

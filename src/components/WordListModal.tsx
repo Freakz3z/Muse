@@ -19,18 +19,21 @@ interface WordListModalProps {
   book: WordBook | null
 }
 
-export default function WordListModal({ isOpen, onClose, book }: WordListModalProps) {
-  const { loadBooks } = useAppStore()
+export default function WordListModal({ isOpen, onClose, book: initialBook }: WordListModalProps) {
+  const { books, removeWordFromBook } = useAppStore()
   const [words, setWords] = useState<Word[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [expandedWord, setExpandedWord] = useState<string | null>(null)
 
+  // 从 store 中获取最新的 book 数据
+  const book = books.find(b => b.id === initialBook?.id) || initialBook
+
   useEffect(() => {
     if (isOpen && book) {
       loadWordsForBook()
     }
-  }, [isOpen, book])
+  }, [isOpen, book?.id]) // 仅在 ID 变化或打开时重新加载
 
   const loadWordsForBook = async () => {
     if (!book) return
@@ -57,11 +60,8 @@ export default function WordListModal({ isOpen, onClose, book }: WordListModalPr
     if (!book) return
     
     try {
-      const updatedWordIds = book.wordIds.filter(id => id !== wordId)
-      const updatedBook = { ...book, wordIds: updatedWordIds, wordCount: updatedWordIds.length }
-      await bookStorage.save(updatedBook)
-      setWords(words.filter(w => w.id !== wordId))
-      await loadBooks()
+      await removeWordFromBook(book.id, wordId)
+      setWords(prev => prev.filter(w => w.id !== wordId))
     } catch (error) {
       console.error('移除单词失败:', error)
     }

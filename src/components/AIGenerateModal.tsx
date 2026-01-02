@@ -155,21 +155,46 @@ export default function AIGenerateModal({ isOpen, onClose, bookId, bookName }: A
                   </div>
 
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">生成数量</span>
-                    <div className="flex items-center gap-4">
-                      <button
-                        onClick={() => setCount(Math.max(1, count - 5))}
-                        className="p-1 hover:bg-gray-100 rounded-md"
-                      >
-                        <Minus className="w-4 h-4" />
-                      </button>
-                      <span className="text-lg font-bold text-blue-600 w-8 text-center">{count}</span>
-                      <button
-                        onClick={() => setCount(Math.min(50, count + 5))}
-                        className="p-1 hover:bg-gray-100 rounded-md"
-                      >
-                        <Plus className="w-4 h-4" />
-                      </button>
+                    <div className="space-y-1">
+                      <span className="text-sm font-medium text-gray-700">生成数量</span>
+                      {count > 15 && (
+                        <p className="text-[10px] text-amber-600 flex items-center gap-1">
+                          <AlertCircle className="w-3 h-3" />
+                          数量较多时生成时间较长
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setCount(Math.max(1, count - 5))}
+                          className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors text-gray-500"
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <input
+                          type="number"
+                          value={count}
+                          onChange={(e) => {
+                            const val = parseInt(e.target.value);
+                            if (!isNaN(val)) {
+                              setCount(Math.min(50, Math.max(1, val)));
+                            } else {
+                              setCount(0);
+                            }
+                          }}
+                          onBlur={() => {
+                            if (count < 1) setCount(1);
+                          }}
+                          className="w-12 h-9 text-center font-bold text-blue-600 bg-blue-50 border-none rounded-lg focus:ring-2 focus:ring-blue-500/20 transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                        <button
+                          onClick={() => setCount(Math.min(50, count + 5))}
+                          className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors text-gray-500"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
                   </div>
 
