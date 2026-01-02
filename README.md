@@ -1,4 +1,4 @@
-# Muse - AI 驱动的英语单词学习助手 🎓
+# Muse - AI 驱动的英语单词学习助手
 
 <p align="center">
   <img src="public/Muse.png" alt="Muse Logo" width="128" height="128">
@@ -116,7 +116,7 @@ npm run electron:build
 ## 📁 项目结构
 
 ```
-Muse_Electron/
+Muse/
 ├── electron/              # Electron 主进程
 │   ├── main.ts           # 主进程入口
 │   └── preload.ts        # 预加载脚本
@@ -197,7 +197,6 @@ Muse_Electron/
 | 快捷键 | 功能 |
 |----------|--------|
 | `Ctrl + Shift + M` | 显示/隐藏主窗口 |
-| `Ctrl + Shift + C` | 剪贴板翻译 |
 
 ### 学习/复习快捷键（可自定义）
 | 快捷键 | 功能 |
@@ -221,12 +220,6 @@ Muse_Electron/
 
 ## 📝 开发计划
 
-- [x] AI 智能释义生成
-- [x] AI 例句生成
-- [x] AI 智能测验
-- [x] AI 学习建议
-- [x] 剪贴板翻译
-- [x] 自定义快捷键
 - [ ] 云端数据同步
 - [ ] 更多词库支持
 - [ ] 学习社区功能

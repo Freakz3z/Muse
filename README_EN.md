@@ -1,4 +1,4 @@
-# Muse - AI-Powered English Vocabulary Learning Assistant 🎓
+# Muse - AI-Powered English Vocabulary Learning Assistant
 
 <p align="center">
   <img src="public/Muse.png" alt="Muse Logo" width="128" height="128">
