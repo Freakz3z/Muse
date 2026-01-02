@@ -27,6 +27,12 @@
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
 </p>
 
+<p align="center">
+  本项目由阿里云ESA提供加速、计算和保护
+  <br>
+  <img src="AlibabaESA.png" alt="Alibaba ESA" width="600">
+</p>
+
 ---
 
 **Muse** 是一款基于 Electron + React + TypeScript 开发的 **AI 驱动的智能英语学习助手**。它利用先进的 AI 技术为用户提供个性化学习体验、智能内容生成和自适应学习计划，让单词学习变得更高效、更有趣。

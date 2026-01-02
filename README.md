@@ -27,6 +27,12 @@
   <img src="https://img.shields.io/badge/License-MIT-green" alt="License">
 </p>
 
+<p align="center">
+  本项目由阿里云ESA提供加速、计算和保护
+  <br>
+  <img src="AlibabaESA.png" alt="Alibaba ESA" width="600">
+</p>
+
 ---
 
 **Muse** is an AI-driven intelligent English vocabulary learning assistant built with Electron + React + TypeScript. It leverages cutting-edge AI technology to provide personalized learning experiences, smart content generation, and adaptive study plans, making vocabulary learning more efficient and engaging.
