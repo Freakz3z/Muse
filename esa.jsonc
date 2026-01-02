@@ -1,5 +1,9 @@
 {
+  "name": "muse-english",
+  "installCommand": "npm install",
+  "buildCommand": "npm run build:web",
   "assets": {
-    "directory": "dist"
+    "directory": "dist",
+    "notFoundStrategy": "singlePageApplication"
   }
 }
