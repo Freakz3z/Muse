@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 import { 
   BookOpen, 
   RefreshCw, 
-  Target, 
   Flame, 
   Clock,
   Trophy,
@@ -13,7 +12,6 @@ import {
 import { motion } from 'framer-motion'
 import { useAppStore } from '../store'
 import StatCard from '../components/StatCard'
-import ProgressBar from '../components/ProgressBar'
 
 export default function Home() {
   const { profile, todayStats, settings, records, currentBook } = useAppStore()

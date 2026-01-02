@@ -2,9 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Volume2, 
-  Check, 
-  X, 
-  RefreshCw,
+  RefreshCw, 
   Award,
   Clock
 } from 'lucide-react'
@@ -21,7 +19,6 @@ export default function Review() {
     updateTodayStats, 
     todayStats,
     settings,
-    words: allWords,
     startSession,
     endSession,
     recordWordResult

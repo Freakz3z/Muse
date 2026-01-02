@@ -9,15 +9,13 @@ interface WordCardProps {
   showAnswer?: boolean
   onFlip?: () => void
   pronunciation?: 'us' | 'uk'
-  onAIEnhance?: (enhanced: Partial<Word>) => void
 }
 
 export default function WordCard({ 
   word, 
   showAnswer = false, 
   onFlip, 
-  pronunciation = 'us',
-  onAIEnhance 
+  pronunciation = 'us'
 }: WordCardProps) {
   const [isFlipped, setIsFlipped] = useState(showAnswer)
   const [isGenerating, setIsGenerating] = useState(false)

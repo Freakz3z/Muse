@@ -4,11 +4,9 @@ import {
   User, 
   Target, 
   Volume2, 
-  Moon, 
   Bell, 
   Clock,
   Save,
-  RefreshCw,
   Bot,
   CheckCircle,
   XCircle,
@@ -19,10 +17,10 @@ import {
   RotateCcw
 } from 'lucide-react'
 import { useAppStore } from '../store'
-import { StudyMode, ShortcutSettings, defaultShortcuts } from '../types'
+import { ShortcutSettings, defaultShortcuts } from '../types'
 import { aiService } from '../services/ai'
 import { AIConfig, AIProviderType, defaultAIConfig } from '../services/ai/types'
-import { keyCodeToDisplay, getShortcutDisplay } from '../hooks/useShortcuts'
+import { getShortcutDisplay } from '../hooks/useShortcuts'
 
 export default function Settings() {
   const { settings, updateSettings, profile, updateProfile, createProfile } = useAppStore()
@@ -31,7 +29,6 @@ export default function Settings() {
   
   // 快捷键编辑状态
   const [editingShortcut, setEditingShortcut] = useState<keyof ShortcutSettings | null>(null)
-  const [shortcutsSaved, setShortcutsSaved] = useState(false)
   
   // AI 配置状态
   const [aiConfig, setAiConfig] = useState<AIConfig>(() => {
@@ -282,7 +279,6 @@ export default function Settings() {
             <div className="space-y-2">
               <ShortcutItem
                 label="显示答案"
-                shortcutKey="showAnswer"
                 currentValue={settings.shortcuts?.showAnswer || defaultShortcuts.showAnswer}
                 isEditing={editingShortcut === 'showAnswer'}
                 onEdit={() => setEditingShortcut('showAnswer')}
@@ -290,7 +286,6 @@ export default function Settings() {
               />
               <ShortcutItem
                 label="上一个单词"
-                shortcutKey="prevWord"
                 currentValue={settings.shortcuts?.prevWord || defaultShortcuts.prevWord}
                 isEditing={editingShortcut === 'prevWord'}
                 onEdit={() => setEditingShortcut('prevWord')}
@@ -298,7 +293,6 @@ export default function Settings() {
               />
               <ShortcutItem
                 label="下一个单词"
-                shortcutKey="nextWord"
                 currentValue={settings.shortcuts?.nextWord || defaultShortcuts.nextWord}
                 isEditing={editingShortcut === 'nextWord'}
                 onEdit={() => setEditingShortcut('nextWord')}
@@ -306,7 +300,6 @@ export default function Settings() {
               />
               <ShortcutItem
                 label="认识"
-                shortcutKey="markKnown"
                 currentValue={settings.shortcuts?.markKnown || defaultShortcuts.markKnown}
                 isEditing={editingShortcut === 'markKnown'}
                 onEdit={() => setEditingShortcut('markKnown')}
@@ -314,7 +307,6 @@ export default function Settings() {
               />
               <ShortcutItem
                 label="不认识"
-                shortcutKey="markUnknown"
                 currentValue={settings.shortcuts?.markUnknown || defaultShortcuts.markUnknown}
                 isEditing={editingShortcut === 'markUnknown'}
                 onEdit={() => setEditingShortcut('markUnknown')}
@@ -322,7 +314,6 @@ export default function Settings() {
               />
               <ShortcutItem
                 label="播放发音"
-                shortcutKey="playAudio"
                 currentValue={settings.shortcuts?.playAudio || defaultShortcuts.playAudio}
                 isEditing={editingShortcut === 'playAudio'}
                 onEdit={() => setEditingShortcut('playAudio')}
@@ -337,7 +328,6 @@ export default function Settings() {
             <div className="space-y-2">
               <ShortcutItem
                 label="简单"
-                shortcutKey="rateEasy"
                 currentValue={settings.shortcuts?.rateEasy || defaultShortcuts.rateEasy}
                 isEditing={editingShortcut === 'rateEasy'}
                 onEdit={() => setEditingShortcut('rateEasy')}
@@ -345,7 +335,6 @@ export default function Settings() {
               />
               <ShortcutItem
                 label="一般"
-                shortcutKey="rateGood"
                 currentValue={settings.shortcuts?.rateGood || defaultShortcuts.rateGood}
                 isEditing={editingShortcut === 'rateGood'}
                 onEdit={() => setEditingShortcut('rateGood')}
@@ -353,7 +342,6 @@ export default function Settings() {
               />
               <ShortcutItem
                 label="困难"
-                shortcutKey="rateHard"
                 currentValue={settings.shortcuts?.rateHard || defaultShortcuts.rateHard}
                 isEditing={editingShortcut === 'rateHard'}
                 onEdit={() => setEditingShortcut('rateHard')}
@@ -361,7 +349,6 @@ export default function Settings() {
               />
               <ShortcutItem
                 label="重来"
-                shortcutKey="rateAgain"
                 currentValue={settings.shortcuts?.rateAgain || defaultShortcuts.rateAgain}
                 isEditing={editingShortcut === 'rateAgain'}
                 onEdit={() => setEditingShortcut('rateAgain')}
@@ -544,7 +531,7 @@ export default function Settings() {
           <div className="flex-1 space-y-3">
             <div>
               <h3 className="text-xl font-bold text-gray-800">Muse</h3>
-              <p className="text-sm text-gray-500">v1.4.0</p>
+              <p className="text-sm text-gray-500">v1.4.1</p>
             </div>
             
             <p className="text-gray-600 leading-relaxed">
@@ -580,14 +567,13 @@ export default function Settings() {
 // 快捷键设置项组件
 interface ShortcutItemProps {
   label: string
-  shortcutKey: string
   currentValue: string
   isEditing: boolean
   onEdit: () => void
   onCancel: () => void
 }
 
-function ShortcutItem({ label, shortcutKey, currentValue, isEditing, onEdit, onCancel }: ShortcutItemProps) {
+function ShortcutItem({ label, currentValue, isEditing, onEdit, onCancel }: ShortcutItemProps) {
   return (
     <div className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50">
       <span className="text-gray-700">{label}</span>

@@ -1,21 +1,20 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
   Check, 
   X, 
-  Timer,
   Trophy,
   RefreshCw,
   Keyboard
 } from 'lucide-react'
 import { useAppStore } from '../store'
-import { Word, QuizType } from '../types'
+import { Word } from '../types'
 import ProgressBar from '../components/ProgressBar'
 
 type QuizMode = 'choice' | 'spelling'
 
 export default function Quiz() {
-  const { words, records, currentBook } = useAppStore()
+  const { words, records } = useAppStore()
   
   const [mode, setMode] = useState<QuizMode | null>(null)
   const [quizWords, setQuizWords] = useState<Word[]>([])

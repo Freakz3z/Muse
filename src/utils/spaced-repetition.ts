@@ -52,9 +52,8 @@ export function calculateSM2(
 /**
  * 计算下次复习的时间戳
  * @param interval 间隔天数
- * @param easeFactor 易度因子
  */
-export function calculateNextReview(interval: number, easeFactor: number): number {
+export function calculateNextReview(interval: number): number {
   const now = Date.now();
   const msPerDay = 24 * 60 * 60 * 1000;
   

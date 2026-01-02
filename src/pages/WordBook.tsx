@@ -8,17 +8,20 @@ import {
   FolderOpen,
   Upload,
   CheckCircle2,
-  Eye
+  Eye,
+  Sparkles
 } from 'lucide-react'
 import { useAppStore } from '../store'
 import { WordBook } from '../types'
 import ImportModal from '../components/ImportModal'
 import WordListModal from '../components/WordListModal'
+import AIGenerateModal from '../components/AIGenerateModal'
 
 export default function WordBookPage() {
   const { books, currentBook, selectBook, createBook } = useAppStore()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
+  const [showAIGenerateModal, setShowAIGenerateModal] = useState(false)
   const [showWordList, setShowWordList] = useState(false)
   const [viewingBook, setViewingBook] = useState<WordBook | null>(null)
   const [newBookName, setNewBookName] = useState('')
@@ -60,6 +63,14 @@ export default function WordBookPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowAIGenerateModal(true)}
+            disabled={!currentBook}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 border border-blue-100 rounded-xl font-medium hover:bg-blue-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Sparkles className="w-4 h-4" />
+            AI 生成
+          </button>
           <button
             onClick={() => setShowCreateModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl font-medium hover:shadow-lg transition-shadow"
@@ -196,6 +207,16 @@ export default function WordBookPage() {
 
       {/* 导入词库弹窗 */}
       <ImportModal isOpen={showImportModal} onClose={() => setShowImportModal(false)} />
+
+      {/* AI 生成单词弹窗 */}
+      {currentBook && (
+        <AIGenerateModal 
+          isOpen={showAIGenerateModal} 
+          onClose={() => setShowAIGenerateModal(false)} 
+          bookId={currentBook.id}
+          bookName={currentBook.name}
+        />
+      )}
 
       {/* 查看词库单词列表弹窗 */}
       <WordListModal 

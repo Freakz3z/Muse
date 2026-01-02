@@ -1,4 +1,5 @@
 import { AIProvider, ChatMessage, AIResponse, WordExplanation, AIConfig, defaultAIConfig, QuizQuestion, AIQuiz, StudySuggestion, GeneratedExample, WordMeaningExplanation } from './types';
+import { Word } from '../../types';
 
 // 通用 AI 客户端基类
 abstract class AIClient {
@@ -89,8 +90,6 @@ class OllamaClient extends AIClient {
 export class AIService {
   private client: AIClient | null = null;
   private provider: AIProvider | null = null;
-  private temperature: number = 0.7;
-  private maxTokens: number = 2000;
   private config: AIConfig = defaultAIConfig;
 
   constructor() {
@@ -228,7 +227,7 @@ export class AIService {
   }
 
   // 翻译文本
-  async translate(text: string, from = 'auto', to = 'zh'): Promise<string> {
+  async translate(text: string, to = 'zh'): Promise<string> {
     const systemPrompt = `你是一个专业的翻译助手。请将用户输入的文本翻译成${to === 'zh' ? '中文' : '英文'}。
 如果输入是单个单词，请提供：单词、音标、词性和主要释义。
 如果输入是句子或段落，请提供流畅自然的翻译。
@@ -631,6 +630,63 @@ ${stats.weakWords?.length ? `- 薄弱单词：${stats.weakWords.join(', ')}` : '
     } catch (error) {
       console.error('AI 搜索单词失败:', error);
       return null;
+    }
+  }
+
+  // 根据主题或描述生成一批单词
+  async generateWords(prompt: string, count: number): Promise<Partial<Word>[]> {
+    if (!this.isConfigured()) {
+      return [];
+    }
+
+    try {
+      const response = await this.chat([
+        {
+          role: 'system',
+          content: '你是一个专业的英语教学专家。请根据用户的要求生成一批相关的英语单词。'
+        },
+        {
+          role: 'user',
+          content: `请根据以下要求生成 ${count} 个英语单词：
+要求：${prompt}
+
+请以JSON数组格式返回，每个对象包含以下字段：
+{
+  "word": "单词",
+  "phonetic": {
+    "us": "美式音标",
+    "uk": "英式音标"
+  },
+  "meanings": [
+    {
+      "partOfSpeech": "词性",
+      "definition": "英文定义",
+      "translation": "中文翻译"
+    }
+  ],
+  "examples": ["例句1", "例句2"],
+  "synonyms": ["同义词1"],
+  "antonyms": ["反义词1"],
+  "frequency": "high"
+}
+
+要求：
+1. frequency 只能是 "high", "medium", "low" 之一。
+2. 只返回JSON数组，不要其他解释。`
+        }
+      ]);
+
+      let jsonStr = response.content.trim();
+      const codeBlockMatch = jsonStr.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+      if (codeBlockMatch) {
+        jsonStr = codeBlockMatch[1];
+      }
+      
+      const data = JSON.parse(jsonStr);
+      return Array.isArray(data) ? data : [];
+    } catch (error) {
+      console.error('AI 生成单词失败:', error);
+      return [];
     }
   }
 }

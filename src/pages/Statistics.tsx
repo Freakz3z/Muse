@@ -1,8 +1,6 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { 
-  BarChart, 
-  Bar, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
@@ -37,7 +35,7 @@ import { aiService } from '../services/ai'
 import { StudySuggestion } from '../services/ai/types'
 
 export default function Statistics() {
-  const { records, todayStats, profile, words, currentBook } = useAppStore()
+  const { records, profile, words, currentBook } = useAppStore()
   const [weeklyStats, setWeeklyStats] = useState<StudyStats[]>([])
   const [monthlyStats, setMonthlyStats] = useState<StudyStats[]>([])
   const [isConfigured, setIsConfigured] = useState(false)
