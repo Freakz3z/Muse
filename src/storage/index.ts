@@ -184,21 +184,50 @@ export const profileStorage = {
     const profile = await this.get();
     if (!profile) return;
 
-    const today = new Date().toISOString().split('T')[0];
-    const lastStudy = new Date(profile.lastStudyAt).toISOString().split('T')[0];
+    const now = Date.now();
+    const today = new Date().toLocaleDateString('en-CA');
     
-    const todayDate = new Date(today);
-    const lastDate = new Date(lastStudy);
-    const diffDays = Math.floor((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 1) {
-      profile.streak += 1;
-    } else if (diffDays > 1) {
+    if (!profile.lastStudyAt) {
       profile.streak = 1;
+    } else {
+      const lastStudy = new Date(profile.lastStudyAt).toLocaleDateString('en-CA');
+      
+      if (today === lastStudy) return; // 今天已经更新过了
+
+      const todayDate = new Date(today);
+      const lastDate = new Date(lastStudy);
+      const diffDays = Math.round((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+
+      if (diffDays === 1) {
+        profile.streak += 1;
+      } else {
+        profile.streak = 1;
+      }
     }
     
-    profile.lastStudyAt = Date.now();
+    profile.lastStudyAt = now;
     await this.save(profile);
+  },
+
+  async checkStreak(): Promise<void> {
+    const profile = await this.get();
+    if (!profile || !profile.lastStudyAt) return;
+
+    const today = new Date().toLocaleDateString('en-CA');
+    const lastStudy = new Date(profile.lastStudyAt).toLocaleDateString('en-CA');
+    
+    if (today === lastStudy) return;
+
+    const todayDate = new Date(today);
+    const lastDate = new Date(lastStudy);
+    const diffDays = Math.round((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    // 如果超过一天没学习，重置连续学习天数为 0
+    // 注意：如果 diffDays === 1，说明昨天学了，今天还没学，此时 streak 应该保持昨天的值
+    if (diffDays > 1) {
+      profile.streak = 0;
+      await this.save(profile);
+    }
   },
 };
 

@@ -1,11 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
   User, 
   Target, 
   Volume2, 
-  Bell, 
-  Clock,
   Save,
   Bot,
   CheckCircle,
@@ -14,7 +12,13 @@ import {
   Eye,
   EyeOff,
   Keyboard,
-  RotateCcw
+  RotateCcw,
+  ChevronRight,
+  X,
+  Settings as SettingsIcon,
+  Cpu,
+  Sparkles,
+  Cloud
 } from 'lucide-react'
 import { useAppStore } from '../store'
 import { ShortcutSettings, defaultShortcuts } from '../types'
@@ -26,6 +30,10 @@ export default function Settings() {
   const { settings, updateSettings, profile, updateProfile, createProfile } = useAppStore()
   const [nickname, setNickname] = useState(profile?.nickname || '')
   const [saved, setSaved] = useState(false)
+  
+  // 弹窗状态
+  const [showShortcutModal, setShowShortcutModal] = useState(false)
+  const [showAIModal, setShowAIModal] = useState(false)
   
   // 快捷键编辑状态
   const [editingShortcut, setEditingShortcut] = useState<keyof ShortcutSettings | null>(null)
@@ -168,20 +176,25 @@ export default function Settings() {
         <div className="space-y-6">
           {/* 每日目标 */}
           <div>
-            <label className="block text-gray-600 text-sm mb-2">每日学习目标</label>
+            <label className="block text-gray-600 text-sm mb-2">每日学习目标 (个)</label>
             <div className="flex items-center gap-4">
+              <input
+                type="number"
+                min="1"
+                max="500"
+                value={settings.dailyGoal}
+                onChange={(e) => updateSettings({ dailyGoal: Math.max(1, Number(e.target.value)) })}
+                className="w-24 px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-bold text-blue-600"
+              />
               <input
                 type="range"
                 min="5"
                 max="100"
                 step="5"
-                value={settings.dailyGoal}
+                value={settings.dailyGoal > 100 ? 100 : settings.dailyGoal}
                 onChange={(e) => updateSettings({ dailyGoal: Number(e.target.value) })}
                 className="flex-1 h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
               />
-              <span className="w-16 text-center font-medium text-blue-500">
-                {settings.dailyGoal} 个
-              </span>
             </div>
           </div>
 
@@ -209,308 +222,343 @@ export default function Settings() {
         </div>
       </div>
 
-      {/* 提醒设置 */}
-      <div className="bg-white rounded-xl p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <Bell className="w-5 h-5 text-gray-400" />
-          提醒设置
-        </h2>
-        
-        <div className="space-y-6">
-          {/* 学习提醒开关 */}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-gray-700">学习提醒</p>
-              <p className="text-gray-400 text-sm">每天定时提醒你学习</p>
+      {/* 高级设置入口 */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <button
+          onClick={() => setShowShortcutModal(true)}
+          className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-all flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center group-hover:bg-purple-100 transition-colors">
+              <Keyboard className="w-6 h-6 text-purple-500" />
             </div>
-            <button
-              onClick={() => updateSettings({ notifications: !settings.notifications })}
-              className={`w-12 h-6 rounded-full transition-colors ${
-                settings.notifications ? 'bg-blue-500' : 'bg-gray-300'
-              }`}
-            >
-              <motion.div
-                animate={{ x: settings.notifications ? 24 : 2 }}
-                className="w-5 h-5 bg-white rounded-full shadow"
-              />
-            </button>
+            <div className="text-left">
+              <p className="font-bold text-gray-800">快捷键设置</p>
+              <p className="text-xs text-gray-500">自定义操作快捷键</p>
+            </div>
           </div>
+          <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-500 transition-colors" />
+        </button>
 
-          {/* 提醒时间 */}
-          {settings.notifications && (
-            <div>
-              <label className="block text-gray-600 text-sm mb-2 flex items-center gap-2">
-                <Clock className="w-4 h-4" />
-                提醒时间
-              </label>
-              <input
-                type="time"
-                value={settings.reminderTime}
-                onChange={(e) => updateSettings({ reminderTime: e.target.value })}
-                className="px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-              />
+        <button
+          onClick={() => setShowAIModal(true)}
+          className="bg-white p-6 rounded-xl shadow-sm hover:shadow-md transition-all flex items-center justify-between group"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center group-hover:bg-blue-100 transition-colors">
+              <Bot className="w-6 h-6 text-blue-500" />
             </div>
-          )}
-        </div>
+            <div className="text-left">
+              <p className="font-bold text-gray-800">AI 智能服务</p>
+              <p className="text-xs text-gray-500">配置 AI 引擎与 API</p>
+            </div>
+          </div>
+          <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-gray-500 transition-colors" />
+        </button>
       </div>
 
-      {/* 快捷键设置 */}
-      <div className="bg-white rounded-xl p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-            <Keyboard className="w-5 h-5 text-gray-400" />
-            快捷键设置
-          </h2>
-          <button
-            onClick={resetShortcuts}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <RotateCcw className="w-4 h-4" />
-            恢复默认
-          </button>
-        </div>
-        
-        <div className="space-y-6">
-          {/* 学习界面快捷键 */}
-          <div>
-            <h3 className="text-sm font-medium text-gray-600 mb-3">学习界面</h3>
-            <div className="space-y-2">
-              <ShortcutItem
-                label="显示答案"
-                currentValue={settings.shortcuts?.showAnswer || defaultShortcuts.showAnswer}
-                isEditing={editingShortcut === 'showAnswer'}
-                onEdit={() => setEditingShortcut('showAnswer')}
-                onCancel={() => setEditingShortcut(null)}
-              />
-              <ShortcutItem
-                label="上一个单词"
-                currentValue={settings.shortcuts?.prevWord || defaultShortcuts.prevWord}
-                isEditing={editingShortcut === 'prevWord'}
-                onEdit={() => setEditingShortcut('prevWord')}
-                onCancel={() => setEditingShortcut(null)}
-              />
-              <ShortcutItem
-                label="下一个单词"
-                currentValue={settings.shortcuts?.nextWord || defaultShortcuts.nextWord}
-                isEditing={editingShortcut === 'nextWord'}
-                onEdit={() => setEditingShortcut('nextWord')}
-                onCancel={() => setEditingShortcut(null)}
-              />
-              <ShortcutItem
-                label="认识"
-                currentValue={settings.shortcuts?.markKnown || defaultShortcuts.markKnown}
-                isEditing={editingShortcut === 'markKnown'}
-                onEdit={() => setEditingShortcut('markKnown')}
-                onCancel={() => setEditingShortcut(null)}
-              />
-              <ShortcutItem
-                label="不认识"
-                currentValue={settings.shortcuts?.markUnknown || defaultShortcuts.markUnknown}
-                isEditing={editingShortcut === 'markUnknown'}
-                onEdit={() => setEditingShortcut('markUnknown')}
-                onCancel={() => setEditingShortcut(null)}
-              />
-              <ShortcutItem
-                label="播放发音"
-                currentValue={settings.shortcuts?.playAudio || defaultShortcuts.playAudio}
-                isEditing={editingShortcut === 'playAudio'}
-                onEdit={() => setEditingShortcut('playAudio')}
-                onCancel={() => setEditingShortcut(null)}
-              />
-            </div>
-          </div>
-          
-          {/* 复习界面快捷键 */}
-          <div>
-            <h3 className="text-sm font-medium text-gray-600 mb-3">复习评分</h3>
-            <div className="space-y-2">
-              <ShortcutItem
-                label="简单"
-                currentValue={settings.shortcuts?.rateEasy || defaultShortcuts.rateEasy}
-                isEditing={editingShortcut === 'rateEasy'}
-                onEdit={() => setEditingShortcut('rateEasy')}
-                onCancel={() => setEditingShortcut(null)}
-              />
-              <ShortcutItem
-                label="一般"
-                currentValue={settings.shortcuts?.rateGood || defaultShortcuts.rateGood}
-                isEditing={editingShortcut === 'rateGood'}
-                onEdit={() => setEditingShortcut('rateGood')}
-                onCancel={() => setEditingShortcut(null)}
-              />
-              <ShortcutItem
-                label="困难"
-                currentValue={settings.shortcuts?.rateHard || defaultShortcuts.rateHard}
-                isEditing={editingShortcut === 'rateHard'}
-                onEdit={() => setEditingShortcut('rateHard')}
-                onCancel={() => setEditingShortcut(null)}
-              />
-              <ShortcutItem
-                label="重来"
-                currentValue={settings.shortcuts?.rateAgain || defaultShortcuts.rateAgain}
-                isEditing={editingShortcut === 'rateAgain'}
-                onEdit={() => setEditingShortcut('rateAgain')}
-                onCancel={() => setEditingShortcut(null)}
-              />
-            </div>
-          </div>
-          
-          {/* 快捷键提示 */}
-          <div className="bg-blue-50 rounded-lg p-4">
-            <p className="text-sm text-blue-700">
-              💡 提示：点击快捷键按钮后，按下新的按键即可修改。支持字母、数字和功能键。
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* AI 设置 */}
-      <div className="bg-white rounded-xl p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <Bot className="w-5 h-5 text-gray-400" />
-          AI 智能服务
-        </h2>
-        
-        <div className="space-y-6">
-          {/* 启用开关 */}
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium text-gray-700">启用 AI 功能</p>
-              <p className="text-gray-400 text-sm">智能释义、记忆技巧、翻译等</p>
-            </div>
-            <button
-              onClick={() => updateAIConfig({ enabled: !aiConfig.enabled })}
-              className={`w-12 h-6 rounded-full transition-colors ${
-                aiConfig.enabled ? 'bg-blue-500' : 'bg-gray-300'
-              }`}
+      {/* 快捷键设置弹窗 */}
+      <AnimatePresence>
+        {showShortcutModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col"
             >
-              <motion.div
-                animate={{ x: aiConfig.enabled ? 24 : 2 }}
-                className="w-5 h-5 bg-white rounded-full shadow"
-              />
-            </button>
-          </div>
-
-          {aiConfig.enabled && (
-            <>
-              {/* AI 提供商选择 */}
-              <div>
-                <label className="block text-gray-600 text-sm mb-2">AI 服务提供商</label>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { id: 'openai', name: 'OpenAI', desc: 'GPT 系列' },
-                    { id: 'ollama', name: 'Ollama', desc: '本地部署' },
-                    { id: 'deepseek', name: 'DeepSeek', desc: '深度求索' },
-                    { id: 'zhipu', name: '智谱 AI', desc: 'GLM 系列' },
-                  ].map(provider => (
-                    <button
-                      key={provider.id}
-                      onClick={() => updateAIConfig({ provider: provider.id as AIProviderType })}
-                      className={`p-3 rounded-xl border-2 text-left transition-colors ${
-                        aiConfig.provider === provider.id
-                          ? 'border-blue-500 bg-blue-50'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <p className="font-medium text-gray-800">{provider.name}</p>
-                      <p className="text-xs text-gray-500">{provider.desc}</p>
-                    </button>
-                  ))}
+              <div className="px-6 py-4 border-b flex items-center justify-between bg-gray-50">
+                <div className="flex items-center gap-2">
+                  <Keyboard className="w-5 h-5 text-purple-500" />
+                  <h2 className="text-lg font-bold text-gray-800">快捷键设置</h2>
                 </div>
+                <button onClick={() => setShowShortcutModal(false)} className="p-1 hover:bg-gray-200 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
               </div>
+              
+              <div className="p-6 overflow-y-auto space-y-6">
+                <div className="flex justify-end">
+                  <button
+                    onClick={resetShortcuts}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    恢复默认
+                  </button>
+                </div>
 
-              {/* API 配置 */}
-              <div className="space-y-4">
-                {/* API Key */}
+                {/* 学习界面快捷键 */}
                 <div>
-                  <label className="block text-gray-600 text-sm mb-2">
-                    API Key {aiConfig.provider !== 'ollama' && <span className="text-red-500">*</span>}
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showApiKey ? 'text' : 'password'}
-                      value={aiConfig.apiKey}
-                      onChange={(e) => updateAIConfig({ apiKey: e.target.value })}
-                      placeholder={aiConfig.provider === 'ollama' ? '本地模式无需 API Key' : '输入你的 API Key'}
-                      className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">学习界面</h3>
+                  <div className="space-y-1">
+                    <ShortcutItem
+                      label="显示答案"
+                      currentValue={settings.shortcuts?.showAnswer || defaultShortcuts.showAnswer}
+                      isEditing={editingShortcut === 'showAnswer'}
+                      onEdit={() => setEditingShortcut('showAnswer')}
+                      onCancel={() => setEditingShortcut(null)}
                     />
-                    <button
-                      onClick={() => setShowApiKey(!showApiKey)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showApiKey ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
+                    <ShortcutItem
+                      label="上一个单词"
+                      currentValue={settings.shortcuts?.prevWord || defaultShortcuts.prevWord}
+                      isEditing={editingShortcut === 'prevWord'}
+                      onEdit={() => setEditingShortcut('prevWord')}
+                      onCancel={() => setEditingShortcut(null)}
+                    />
+                    <ShortcutItem
+                      label="下一个单词"
+                      currentValue={settings.shortcuts?.nextWord || defaultShortcuts.nextWord}
+                      isEditing={editingShortcut === 'nextWord'}
+                      onEdit={() => setEditingShortcut('nextWord')}
+                      onCancel={() => setEditingShortcut(null)}
+                    />
+                    <ShortcutItem
+                      label="认识"
+                      currentValue={settings.shortcuts?.markKnown || defaultShortcuts.markKnown}
+                      isEditing={editingShortcut === 'markKnown'}
+                      onEdit={() => setEditingShortcut('markKnown')}
+                      onCancel={() => setEditingShortcut(null)}
+                    />
+                    <ShortcutItem
+                      label="不认识"
+                      currentValue={settings.shortcuts?.markUnknown || defaultShortcuts.markUnknown}
+                      isEditing={editingShortcut === 'markUnknown'}
+                      onEdit={() => setEditingShortcut('markUnknown')}
+                      onCancel={() => setEditingShortcut(null)}
+                    />
+                    <ShortcutItem
+                      label="播放发音"
+                      currentValue={settings.shortcuts?.playAudio || defaultShortcuts.playAudio}
+                      isEditing={editingShortcut === 'playAudio'}
+                      onEdit={() => setEditingShortcut('playAudio')}
+                      onCancel={() => setEditingShortcut(null)}
+                    />
                   </div>
                 </div>
-
-                {/* API 地址 */}
+                
+                {/* 复习界面快捷键 */}
                 <div>
-                  <label className="block text-gray-600 text-sm mb-2">API 地址（可选）</label>
-                  <input
-                    type="text"
-                    value={aiConfig.baseUrl}
-                    onChange={(e) => updateAIConfig({ baseUrl: e.target.value })}
-                    placeholder={
-                      aiConfig.provider === 'openai' ? 'https://api.openai.com/v1' :
-                      aiConfig.provider === 'ollama' ? 'http://localhost:11434' :
-                      aiConfig.provider === 'deepseek' ? 'https://api.deepseek.com' :
-                      'https://open.bigmodel.cn/api/paas/v4'
-                    }
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  />
+                  <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">复习评分</h3>
+                  <div className="space-y-1">
+                    <ShortcutItem
+                      label="简单"
+                      currentValue={settings.shortcuts?.rateEasy || defaultShortcuts.rateEasy}
+                      isEditing={editingShortcut === 'rateEasy'}
+                      onEdit={() => setEditingShortcut('rateEasy')}
+                      onCancel={() => setEditingShortcut(null)}
+                    />
+                    <ShortcutItem
+                      label="一般"
+                      currentValue={settings.shortcuts?.rateGood || defaultShortcuts.rateGood}
+                      isEditing={editingShortcut === 'rateGood'}
+                      onEdit={() => setEditingShortcut('rateGood')}
+                      onCancel={() => setEditingShortcut(null)}
+                    />
+                    <ShortcutItem
+                      label="困难"
+                      currentValue={settings.shortcuts?.rateHard || defaultShortcuts.rateHard}
+                      isEditing={editingShortcut === 'rateHard'}
+                      onEdit={() => setEditingShortcut('rateHard')}
+                      onCancel={() => setEditingShortcut(null)}
+                    />
+                    <ShortcutItem
+                      label="重来"
+                      currentValue={settings.shortcuts?.rateAgain || defaultShortcuts.rateAgain}
+                      isEditing={editingShortcut === 'rateAgain'}
+                      onEdit={() => setEditingShortcut('rateAgain')}
+                      onCancel={() => setEditingShortcut(null)}
+                    />
+                  </div>
                 </div>
-
-                {/* 模型名称 */}
-                <div>
-                  <label className="block text-gray-600 text-sm mb-2">模型名称</label>
-                  <input
-                    type="text"
-                    value={aiConfig.model}
-                    onChange={(e) => updateAIConfig({ model: e.target.value })}
-                    placeholder={
-                      aiConfig.provider === 'openai' ? 'gpt-4o-mini' :
-                      aiConfig.provider === 'ollama' ? 'llama3' :
-                      aiConfig.provider === 'deepseek' ? 'deepseek-chat' :
-                      'glm-4-flash'
-                    }
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                  />
+                
+                <div className="bg-purple-50 rounded-xl p-4 border border-purple-100">
+                  <p className="text-sm text-purple-700">
+                    💡 提示：点击快捷键按钮后，按下键盘上的任意按键即可完成修改。
+                  </p>
                 </div>
               </div>
-
-              {/* 操作按钮 */}
-              <div className="flex gap-3">
+              
+              <div className="p-6 border-t bg-gray-50">
                 <button
-                  onClick={handleTestConnection}
-                  disabled={testingConnection || (!aiConfig.apiKey && aiConfig.provider !== 'ollama')}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 border border-gray-300 rounded-xl font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => setShowShortcutModal(false)}
+                  className="w-full py-3 bg-gray-800 text-white rounded-xl font-bold hover:bg-gray-900 transition-colors"
                 >
-                  {testingConnection ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : connectionStatus === 'success' ? (
-                    <CheckCircle className="w-4 h-4 text-green-500" />
-                  ) : connectionStatus === 'error' ? (
-                    <XCircle className="w-4 h-4 text-red-500" />
-                  ) : null}
-                  {testingConnection ? '测试中...' : 
-                   connectionStatus === 'success' ? '连接成功，已保存' :
-                   connectionStatus === 'error' ? '连接失败' : '测试并保存'}
-                </button>
-                <button
-                  onClick={handleSaveAIConfig}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 transition-colors"
-                >
-                  <Save className="w-4 h-4" />
-                  {aiSaved ? '已保存' : '仅保存'}
+                  完成
                 </button>
               </div>
-              <p className="text-xs text-gray-400 mt-2">
-                💡 点击"测试并保存"会使用当前配置测试连接，成功后自动保存
-              </p>
-            </>
-          )}
-        </div>
-      </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* AI 设置弹窗 */}
+      <AnimatePresence>
+        {showAIModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-hidden flex flex-col"
+            >
+              <div className="px-6 py-4 border-b flex items-center justify-between bg-gray-50">
+                <div className="flex items-center gap-2">
+                  <Bot className="w-5 h-5 text-blue-500" />
+                  <h2 className="text-lg font-bold text-gray-800">AI 智能服务配置</h2>
+                </div>
+                <button onClick={() => setShowAIModal(false)} className="p-1 hover:bg-gray-200 rounded-full transition-colors">
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+              
+              <div className="p-6 overflow-y-auto space-y-6">
+                {/* 启用开关 */}
+                <div className="flex items-center justify-between p-4 bg-blue-50 rounded-xl border border-blue-100">
+                  <div>
+                    <p className="font-bold text-blue-900">启用 AI 功能</p>
+                    <p className="text-blue-700/70 text-xs">智能释义、记忆技巧、翻译等</p>
+                  </div>
+                  <button
+                    onClick={() => updateAIConfig({ enabled: !aiConfig.enabled })}
+                    className={`w-12 h-6 rounded-full transition-colors ${
+                      aiConfig.enabled ? 'bg-blue-500' : 'bg-gray-300'
+                    }`}
+                  >
+                    <motion.div
+                      animate={{ x: aiConfig.enabled ? 24 : 2 }}
+                      className="w-5 h-5 bg-white rounded-full shadow"
+                    />
+                  </button>
+                </div>
+
+                {aiConfig.enabled && (
+                  <>
+                    {/* 协议类型选择 */}
+                    <div>
+                      <label className="block text-gray-500 text-xs font-bold uppercase tracking-wider mb-3">API 协议类型</label>
+                      <div className="grid grid-cols-2 gap-3">
+                        {[
+                          { id: 'openai', name: 'OpenAI', desc: '标准 API 协议', icon: <SettingsIcon className="w-4 h-4" /> },
+                          { id: 'ollama', name: 'Ollama', desc: '本地推理协议', icon: <Cpu className="w-4 h-4" /> },
+                          { id: 'anthropic', name: 'Claude', desc: 'Anthropic 协议', icon: <Cloud className="w-4 h-4" /> },
+                          { id: 'gemini', name: 'Gemini', desc: 'Google AI 协议', icon: <Sparkles className="w-4 h-4" /> },
+                        ].map(provider => (
+                          <button
+                            key={provider.id}
+                            onClick={() => updateAIConfig({ provider: provider.id as AIProviderType })}
+                            className={`p-3 rounded-xl border-2 text-left transition-all ${
+                              aiConfig.provider === provider.id
+                                ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500/10'
+                                : 'border-gray-100 hover:border-gray-200'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={aiConfig.provider === provider.id ? 'text-blue-500' : 'text-gray-400'}>
+                                {provider.icon}
+                              </span>
+                              <p className="font-bold text-gray-800 text-sm">{provider.name}</p>
+                            </div>
+                            <p className="text-[10px] text-gray-400">{provider.desc}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* API 配置 */}
+                    <div className="space-y-4">
+                      {/* API Key */}
+                      <div>
+                        <label className="block text-gray-600 text-sm font-medium mb-2">
+                          API Key {aiConfig.provider !== 'ollama' && <span className="text-red-500">*</span>}
+                        </label>
+                        <div className="relative">
+                          <input
+                            type={showApiKey ? 'text' : 'password'}
+                            value={aiConfig.apiKey}
+                            onChange={(e) => updateAIConfig({ apiKey: e.target.value })}
+                            placeholder={aiConfig.provider === 'ollama' ? '本地模式无需 API Key' : '输入你的 API Key'}
+                            className="w-full px-4 py-3 pr-12 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-mono"
+                          />
+                          <button
+                            onClick={() => setShowApiKey(!showApiKey)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          >
+                            {showApiKey ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* API 地址 */}
+                      <div>
+                        <label className="block text-gray-600 text-sm font-medium mb-2">API 代理地址 (Base URL)</label>
+                        <input
+                          type="text"
+                          value={aiConfig.baseUrl}
+                          onChange={(e) => updateAIConfig({ baseUrl: e.target.value })}
+                          placeholder={
+                            aiConfig.provider === 'openai' ? 'https://api.openai.com/v1' :
+                            aiConfig.provider === 'ollama' ? 'http://localhost:11434' :
+                            aiConfig.provider === 'anthropic' ? 'https://api.anthropic.com/v1' :
+                            'https://generativelanguage.googleapis.com/v1beta'
+                          }
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-mono"
+                        />
+                      </div>
+
+                      {/* 模型名称 */}
+                      <div>
+                        <label className="block text-gray-600 text-sm font-medium mb-2">模型名称 (Model)</label>
+                        <input
+                          type="text"
+                          value={aiConfig.model}
+                          onChange={(e) => updateAIConfig({ model: e.target.value })}
+                          placeholder={
+                            aiConfig.provider === 'openai' ? 'gpt-4o-mini' :
+                            aiConfig.provider === 'ollama' ? 'llama3' :
+                            aiConfig.provider === 'anthropic' ? 'claude-3-5-sonnet-20240620' :
+                            'gemini-1.5-flash'
+                          }
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-sm font-mono"
+                        />
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+              
+              <div className="p-6 border-t bg-gray-50 space-y-3">
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleTestConnection}
+                    disabled={testingConnection || (!aiConfig.apiKey && aiConfig.provider !== 'ollama')}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 border border-gray-300 rounded-xl font-bold text-gray-700 hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {testingConnection ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : connectionStatus === 'success' ? (
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                    ) : connectionStatus === 'error' ? (
+                      <XCircle className="w-4 h-4 text-red-500" />
+                    ) : null}
+                    {testingConnection ? '测试中...' : '测试并保存'}
+                  </button>
+                  <button
+                    onClick={handleSaveAIConfig}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-500 text-white rounded-xl font-bold hover:bg-blue-600 transition-colors"
+                  >
+                    <Save className="w-4 h-4" />
+                    {aiSaved ? '已保存' : '仅保存'}
+                  </button>
+                </div>
+                <p className="text-[10px] text-gray-400 text-center">
+                  💡 提示：配置完成后点击“测试并保存”以验证 API 是否可用。
+                </p>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* 关于 */}
       <div className="bg-white rounded-xl p-6 shadow-sm">
@@ -529,7 +577,7 @@ export default function Settings() {
           <div className="flex-1 space-y-3">
             <div>
               <h3 className="text-xl font-bold text-gray-800">Muse</h3>
-              <p className="text-sm text-gray-500">v1.4.2</p>
+              <p className="text-sm text-gray-500">v1.4.3</p>
             </div>
             
             <p className="text-gray-600 leading-relaxed">

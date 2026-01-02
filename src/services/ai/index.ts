@@ -151,10 +151,15 @@ export class AIService {
       case 'ollama':
         this.client = new OllamaClient(provider, temperature, maxTokens);
         break;
-      case 'openai':
-      case 'deepseek':
-      case 'zhipu':
+      case 'gemini':
+        // TODO: 实现原生 Gemini 客户端，目前暂用 OpenAI 兼容模式（适用于 OneAPI 等中转）
+        this.client = new OpenAICompatibleClient(provider, temperature, maxTokens);
+        break;
       case 'anthropic':
+        // TODO: 实现原生 Anthropic 客户端，目前暂用 OpenAI 兼容模式（适用于 OneAPI 等中转）
+        this.client = new OpenAICompatibleClient(provider, temperature, maxTokens);
+        break;
+      case 'openai':
       case 'custom':
       default:
         this.client = new OpenAICompatibleClient(provider, temperature, maxTokens);
@@ -436,11 +441,13 @@ ${selectedTypes}
     averageAccuracy: number;
     studyDays: number;
     weakWords?: string[];
+    wrongRecords?: { word: string; count: number }[];
   }): Promise<StudySuggestion> {
     const response = await this.chat([
       { 
         role: 'system', 
         content: `你是一个专业的英语学习顾问。请根据学生的学习数据，提供个性化的学习建议。
+特别注意：如果提供了错题记录（wrongRecords），请分析这些单词的共同特征（如拼写、词性、含义混淆等），并给出针对性的记忆策略。
 
 请以JSON格式返回：
 {
@@ -466,7 +473,8 @@ ${selectedTypes}
 - 待复习：${stats.reviewDueWords}
 - 平均正确率：${(stats.averageAccuracy * 100).toFixed(1)}%
 - 累计学习天数：${stats.studyDays}天
-${stats.weakWords?.length ? `- 薄弱单词：${stats.weakWords.join(', ')}` : ''}` },
+${stats.weakWords?.length ? `- 薄弱单词：${stats.weakWords.join(', ')}` : ''}
+${stats.wrongRecords?.length ? `- 错题记录：${stats.wrongRecords.map(r => `${r.word}(错误${r.count}次)`).join(', ')}` : ''}` },
     ]);
 
     try {

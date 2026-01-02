@@ -64,9 +64,9 @@
 - **智能数据补全** - 自动检测并补充缺失的单词音标、翻译和词性信息
 
 ### 🎯 支持的 AI 服务
-- **OpenAI** - GPT-4o-mini, GPT-4o 等模型
-- **DeepSeek** - DeepSeek-Chat 等国产大模型
-- **智谱 AI** - GLM-4-Flash 等模型
+- **OpenAI** - 支持 GPT-4o, GPT-4o-mini 等模型，以及所有兼容 OpenAI 协议的 API（如 DeepSeek, 智谱 AI 等）
+- **Claude** - 支持 Claude 3.5 Sonnet/Haiku 等模型
+- **Gemini** - 支持 Gemini 1.5 Pro/Flash 等模型
 - **Ollama** - 本地运行的开源模型（无需 API Key）
 - **自定义** - 支持任何 OpenAI 兼容 API
 

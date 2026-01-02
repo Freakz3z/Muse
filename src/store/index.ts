@@ -69,6 +69,7 @@ interface AppState {
   // 统计操作
   loadTodayStats: () => Promise<void>;
   updateTodayStats: (updates: Partial<StudyStats>) => Promise<void>;
+  updateStreak: () => Promise<void>;
   
   // 会话操作
   startSession: (mode: 'learn' | 'review' | 'quiz', bookId: string) => Promise<void>;
@@ -87,7 +88,10 @@ const getDefaultSettings = (): UserSettings => ({
   shortcuts: defaultShortcuts,
 });
 
-const getTodayDateString = () => new Date().toISOString().split('T')[0];
+const getTodayDateString = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+};
 
 export const useAppStore = create<AppState>((set, get) => ({
   words: [],
@@ -207,14 +211,28 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   
   getWordsToReview: async () => {
-    const { words, records } = get();
+    let { words, records } = get();
+    
+    // 如果 words 为空，尝试重新加载
+    if (words.length === 0) {
+      words = await wordStorage.getAll();
+      set({ words });
+    }
+
     const now = Date.now();
     const dueRecords = Array.from(records.values())
       .filter(r => r.nextReviewAt <= now)
       .sort((a, b) => a.nextReviewAt - b.nextReviewAt);
     
     const dueWordIds = new Set(dueRecords.map(r => r.wordId));
-    return words.filter(w => dueWordIds.has(w.id));
+    const reviewWords = words.filter(w => dueWordIds.has(w.id));
+
+    // 如果发现有记录但找不到单词，说明可能是孤立记录，可以考虑清理（可选）
+    if (reviewWords.length < dueRecords.length) {
+      console.warn(`发现 ${dueRecords.length - reviewWords.length} 条孤立的学习记录`);
+    }
+
+    return reviewWords;
   },
   
   getNewWords: async (count) => {
@@ -357,6 +375,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   
   loadProfile: async () => {
+    await profileStorage.checkStreak();
     const profile = await profileStorage.get();
     set({ profile });
   },
@@ -399,6 +418,20 @@ export const useAppStore = create<AppState>((set, get) => ({
     const newStats = { ...currentStats, ...updates };
     await statsStorage.save(newStats);
     set({ todayStats: newStats });
+    
+    // 只要有学习活动，就尝试更新连续学习天数
+    if (newStats.newWords > 0 || newStats.reviewedWords > 0) {
+      await get().updateStreak();
+      // 更新后重新加载 profile 以反映最新的 streak
+      const profile = await profileStorage.get();
+      set({ profile });
+    }
+  },
+
+  updateStreak: async () => {
+    await profileStorage.updateStreak();
+    const profile = await profileStorage.get();
+    set({ profile });
   },
   
   startSession: async (mode, bookId) => {
@@ -421,6 +454,12 @@ export const useAppStore = create<AppState>((set, get) => ({
       currentSession.endedAt = Date.now();
       await sessionStorage.saveHistory(currentSession);
       await sessionStorage.clearCurrent();
+      
+      // 更新连续学习天数
+      if (currentSession.wordsStudied.length > 0) {
+        await get().updateStreak();
+      }
+      
       set({ currentSession: null });
     }
   },

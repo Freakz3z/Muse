@@ -59,6 +59,17 @@ export default function AICoachPage() {
       .map(r => words.find(w => w.id === r.wordId)?.word)
       .filter(Boolean) as string[]
 
+    // 提取错题记录
+    const wrongRecords = recordsArray
+      .filter(r => r.wrongCount > 0)
+      .sort((a, b) => b.wrongCount - a.wrongCount)
+      .slice(0, 10)
+      .map(r => ({
+        word: words.find(w => w.id === r.wordId)?.word || '',
+        count: r.wrongCount
+      }))
+      .filter(r => r.word)
+
     return {
       totalWords: currentBook?.wordCount || 0,
       masteredWords,
@@ -67,6 +78,7 @@ export default function AICoachPage() {
       averageAccuracy: Math.min(averageAccuracy, 1),
       studyDays,
       weakWords,
+      wrongRecords,
     }
   }
 

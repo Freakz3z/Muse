@@ -65,9 +65,9 @@
 ### 🎯 Supported AI Services
 | Provider | Models | API Key Required |
 |----------|--------|------------------|
-| **OpenAI** | GPT-4o-mini, GPT-4o, etc. | ✅ Yes |
-| **DeepSeek** | DeepSeek-Chat | ✅ Yes |
-| **Zhipu AI** | GLM-4-Flash | ✅ Yes |
+| **OpenAI** | GPT-4o, GPT-4o-mini, etc. (Supports DeepSeek, Zhipu via proxy) | ✅ Yes |
+| **Claude** | Claude 3.5 Sonnet, Haiku, etc. | ✅ Yes |
+| **Gemini** | Gemini 1.5 Pro, Flash, etc. | ✅ Yes |
 | **Ollama** | Llama3, Mistral, etc. | ❌ No (Local) |
 | **Custom** | Any OpenAI-compatible API | Depends |
 

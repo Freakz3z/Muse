@@ -14,7 +14,7 @@ import { useAppStore } from '../store'
 import StatCard from '../components/StatCard'
 
 export default function Home() {
-  const { profile, todayStats, settings, records, currentBook } = useAppStore()
+  const { profile, todayStats, settings, records, currentBook, getWordsToReview } = useAppStore()
   const [greeting, setGreeting] = useState('')
   const [reviewCount, setReviewCount] = useState(0)
 
@@ -26,10 +26,12 @@ export default function Home() {
   }, [])
 
   useEffect(() => {
-    const now = Date.now()
-    const dueCount = Array.from(records.values()).filter(r => r.nextReviewAt <= now).length
-    setReviewCount(dueCount)
-  }, [records])
+    const loadReviewCount = async () => {
+      const dueWords = await getWordsToReview()
+      setReviewCount(dueWords.length)
+    }
+    loadReviewCount()
+  }, [records, getWordsToReview])
 
   const dailyProgress = todayStats.newWords + todayStats.reviewedWords
   const totalMastered = Array.from(records.values()).filter(r => r.masteryLevel >= 3).length

@@ -30,16 +30,24 @@ export function calculateSM2(
   let newInterval: number;
   
   if (quality < 3) {
-    // 回答质量差，重新开始
+    // 回答质量差，重新开始，但保留一定的 EF 惩罚
     newInterval = 1;
+    newEF = Math.max(1.3, easeFactor - 0.2);
   } else {
     // 计算新间隔
     if (interval === 0) {
       newInterval = 1;
     } else if (interval === 1) {
-      newInterval = 6;
+      newInterval = 3; // 从 6 改为 3，让复习更频繁一点
+    } else if (interval === 3) {
+      newInterval = 7;
     } else {
       newInterval = Math.round(interval * newEF);
+    }
+    
+    // 如果是 "hard" (quality === 3)，额外缩减下一次间隔
+    if (quality === 3) {
+      newInterval = Math.max(1, Math.round(newInterval * 0.6));
     }
   }
   

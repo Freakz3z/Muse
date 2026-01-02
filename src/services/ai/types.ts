@@ -1,6 +1,6 @@
 // AI 服务类型定义
 
-export type AIProviderType = 'openai' | 'ollama' | 'anthropic' | 'deepseek' | 'zhipu' | 'custom';
+export type AIProviderType = 'openai' | 'ollama' | 'anthropic' | 'gemini' | 'custom';
 
 export interface AIProvider {
   type: AIProviderType;
@@ -132,20 +132,15 @@ export const defaultAIConfig: AIConfig = {
       baseUrl: 'http://localhost:11434',
       defaultModel: 'llama3',
     },
-    deepseek: {
-      name: 'DeepSeek',
-      baseUrl: 'https://api.deepseek.com',
-      defaultModel: 'deepseek-chat',
-    },
-    zhipu: {
-      name: '智谱AI',
-      baseUrl: 'https://open.bigmodel.cn/api/paas/v4',
-      defaultModel: 'glm-4-flash',
-    },
     anthropic: {
-      name: 'Anthropic',
+      name: 'Claude (Anthropic)',
       baseUrl: 'https://api.anthropic.com/v1',
-      defaultModel: 'claude-3-haiku-20240307',
+      defaultModel: 'claude-3-5-sonnet-20240620',
+    },
+    gemini: {
+      name: 'Gemini (Google)',
+      baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
+      defaultModel: 'gemini-1.5-flash',
     },
     custom: {
       name: '自定义',

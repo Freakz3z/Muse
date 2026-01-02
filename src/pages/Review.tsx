@@ -78,11 +78,19 @@ export default function Review() {
     const qualityMap = { easy: 5, good: 4, hard: 3, again: 1 }
     const quality = remembered ? qualityMap[difficulty] : getQualityFromResponse(responseTime, false)
     
+    // 更新学习记录
     await updateRecord(currentWord.id, remembered, quality)
     recordWordResult(currentWord.id, remembered)
     
-    if (remembered) {
+    // 统计逻辑：只有第一次正确回答才增加正确数
+    // 如果是 "again" 或 "hard"，该单词会再次出现
+    if (remembered && difficulty !== 'hard') {
       setCorrectCount(c => c + 1)
+    }
+    
+    // 优化复习逻辑：如果不记得或觉得困难，加入到本轮复习队列末尾
+    if (difficulty === 'again' || difficulty === 'hard') {
+      setWords(prev => [...prev, currentWord])
     }
     
     await updateTodayStats({

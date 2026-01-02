@@ -79,6 +79,17 @@ export default function Statistics() {
       .map(r => words.find(w => w.id === r.wordId)?.word)
       .filter(Boolean) as string[]
 
+    // 提取错题记录
+    const wrongRecords = recordsArray
+      .filter(r => r.wrongCount > 0)
+      .sort((a, b) => b.wrongCount - a.wrongCount)
+      .slice(0, 10)
+      .map(r => ({
+        word: words.find(w => w.id === r.wordId)?.word || '',
+        count: r.wrongCount
+      }))
+      .filter(r => r.word)
+
     return {
       totalWords: currentBook?.wordCount || 0,
       masteredWords,
@@ -87,6 +98,7 @@ export default function Statistics() {
       averageAccuracy: Math.min(averageAccuracy, 1),
       studyDays,
       weakWords,
+      wrongRecords,
     }
   }
 
@@ -159,6 +171,43 @@ export default function Statistics() {
     date: formatDate(stat.date),
     total: stat.newWords + stat.reviewedWords,
   }))
+
+  // 计算词汇量增长趋势
+  const growthData = () => {
+    let cumulative = 0
+    return monthlyStats.map(stat => {
+      cumulative += stat.newWords
+      return {
+        date: formatDate(stat.date),
+        count: cumulative
+      }
+    })
+  }
+
+  // 遗忘曲线预测 (未来7天)
+  const forecastData = () => {
+    const now = new Date()
+    const forecast = []
+    const recordsArray = Array.from(records.values())
+
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(now)
+      date.setDate(now.getDate() + i)
+      const dateStr = date.toISOString().split('T')[0]
+      
+      // 计算在该日期或之前需要复习的单词总数
+      const count = recordsArray.filter(r => {
+        const nextReview = new Date(r.nextReviewAt).toISOString().split('T')[0]
+        return nextReview <= dateStr
+      }).length
+
+      forecast.push({
+        date: `${date.getMonth() + 1}/${date.getDate()}`,
+        count
+      })
+    }
+    return forecast
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
@@ -279,6 +328,89 @@ export default function Statistics() {
                 暂无数据
               </div>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* 深度分析图表 */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* 词汇量增长趋势 */}
+        <div className="bg-white rounded-xl p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-blue-500" />
+            词汇量增长趋势
+          </h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={growthData()}>
+                <defs>
+                  <linearGradient id="colorGrowth" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} tick={{fill: '#9ca3af'}} />
+                <YAxis stroke="#9ca3af" fontSize={12} tick={{fill: '#9ca3af'}} />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'white', 
+                    border: 'none', 
+                    borderRadius: '8px', 
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' 
+                  }}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="count" 
+                  name="累计词汇量" 
+                  stroke="#3b82f6" 
+                  strokeWidth={3}
+                  fillOpacity={1} 
+                  fill="url(#colorGrowth)" 
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* 遗忘曲线预测 */}
+        <div className="bg-white rounded-xl p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+            <Clock className="w-5 h-5 text-purple-500" />
+            遗忘曲线预测 (未来7天)
+          </h3>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={forecastData()}>
+                <defs>
+                  <linearGradient id="colorForecast" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                <XAxis dataKey="date" stroke="#9ca3af" fontSize={12} tick={{fill: '#9ca3af'}} />
+                <YAxis stroke="#9ca3af" fontSize={12} tick={{fill: '#9ca3af'}} />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'white', 
+                    border: 'none', 
+                    borderRadius: '8px', 
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' 
+                  }}
+                />
+                <Area 
+                  type="monotone" 
+                  dataKey="count" 
+                  name="待复习单词" 
+                  stroke="#8b5cf6" 
+                  strokeWidth={3}
+                  fillOpacity={1} 
+                  fill="url(#colorForecast)" 
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </div>
       </div>
