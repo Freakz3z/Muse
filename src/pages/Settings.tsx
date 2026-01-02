@@ -104,8 +104,6 @@ export default function Settings() {
   // 重置快捷键
   const resetShortcuts = () => {
     updateSettings({ shortcuts: defaultShortcuts })
-    setShortcutsSaved(true)
-    setTimeout(() => setShortcutsSaved(false), 2000)
   }
 
   const handleSaveProfile = async () => {

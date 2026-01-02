@@ -146,8 +146,6 @@ export class AIService {
   // 配置 AI 服务
   configure(provider: AIProvider, temperature = 0.7, maxTokens = 2000) {
     this.provider = provider;
-    this.temperature = temperature;
-    this.maxTokens = maxTokens;
 
     switch (provider.type) {
       case 'ollama':
