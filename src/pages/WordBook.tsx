@@ -7,7 +7,6 @@ import {
   Check,
   FolderOpen,
   Upload,
-  CheckCircle2,
   Eye,
   Sparkles,
   Trash2

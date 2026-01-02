@@ -10,7 +10,7 @@ import {
   ChevronUp
 } from 'lucide-react'
 import { Word, WordBook } from '../types'
-import { wordStorage, bookStorage } from '../storage'
+import { wordStorage } from '../storage'
 import { useAppStore } from '../store'
 
 interface WordListModalProps {

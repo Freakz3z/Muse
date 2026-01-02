@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Brain, Zap, Globe, BookOpen } from 'lucide-react';
+import { Brain, Zap, Globe, BookOpen } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function SplashScreen() {
