@@ -116,15 +116,32 @@ export default function ImportModal({ isOpen, onClose }: ImportModalProps) {
             {/* 格式说明 */}
             <div className="mb-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
               <h4 className="text-sm font-medium text-blue-700 mb-2">支持的 JSON 格式</h4>
-              <pre className="text-xs text-blue-600 bg-blue-100/50 p-3 rounded-lg overflow-x-auto">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <p className="text-[10px] text-blue-500 mb-1 font-medium uppercase">推荐格式 (完整数据)</p>
+                  <pre className="text-[10px] text-blue-600 bg-blue-100/50 p-2 rounded-lg overflow-x-auto h-24">
+{`[
+  {
+    "word": "apple",
+    "meanings": [...],
+    "examples": [...]
+  }
+]`}
+                  </pre>
+                </div>
+                <div>
+                  <p className="text-[10px] text-blue-500 mb-1 font-medium uppercase">简易格式 (仅单词)</p>
+                  <pre className="text-[10px] text-blue-600 bg-blue-100/50 p-2 rounded-lg overflow-x-auto h-24">
 {`{
   "abandon": 1,
   "ability": 1,
   "accept": 2
 }`}
-              </pre>
+                  </pre>
+                </div>
+              </div>
               <p className="text-xs text-blue-600 mt-2">
-                格式: <code className="bg-blue-100 px-1 rounded">{"{ \"单词\": 优先级, ... }"}</code>
+                提示: 推荐使用从本应用导出的 JSON 文件，可保留完整的释义、例句等信息。
               </p>
             </div>
 
@@ -158,7 +175,7 @@ export default function ImportModal({ isOpen, onClose }: ImportModalProps) {
                   setValidation(null)
                   setImportResult(null)
                 }}
-                placeholder='{"word1": 1, "word2": 1, ...}'
+                placeholder='[{"word": "apple", "meanings": [...]}, ...] 或 {"apple": 1, ...}'
                 className="w-full h-40 p-4 border border-gray-200 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono"
               />
             </div>

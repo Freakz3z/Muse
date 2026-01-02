@@ -1,0 +1,15 @@
+{
+  "short_name": "Muse",
+  "name": "Muse - AI-Driven English Learning Assistant",
+  "icons": [
+    {
+      "src": "Muse.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#3b82f6",
+  "background_color": "#ffffff"
+}

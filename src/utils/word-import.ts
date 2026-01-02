@@ -7,28 +7,40 @@ export interface ImportedWordEntry {
 
 /**
  * 解析用户提供的 JSON 格式词库
- * 支持格式: {"word1": 1, "word2": 1, ...}
+ * 支持格式: 
+ * 1. {"bookName": "...", "words": [...]} (导出格式)
+ * 2. [{"word": "...", ...}, ...] (Word 对象数组)
+ * 3. {"word1": 1, "word2": 1, ...} (旧版格式)
  */
-export function parseJSONWordList(jsonString: string): ImportedWordEntry[] {
+export function parseJSONWordList(jsonString: string): (Partial<Word> | ImportedWordEntry)[] {
   try {
     const data = JSON.parse(jsonString)
     
-    if (typeof data !== 'object' || Array.isArray(data)) {
-      throw new Error('JSON 格式错误，应为 {"word": priority, ...} 格式')
+    // 1. 处理导出格式 {"bookName": "...", "words": [...]}
+    if (data && typeof data === 'object' && Array.isArray(data.words)) {
+      return data.words
     }
 
-    const entries: ImportedWordEntry[] = []
-    
-    for (const [word, priority] of Object.entries(data)) {
-      if (typeof word === 'string' && word.trim()) {
-        entries.push({
-          word: word.trim().toLowerCase(),
-          priority: typeof priority === 'number' ? priority : 1
-        })
+    // 2. 处理 Word 对象数组
+    if (Array.isArray(data)) {
+      return data.filter(item => item && typeof item.word === 'string')
+    }
+
+    // 3. 处理旧版格式 {"word": priority}
+    if (typeof data === 'object' && data !== null) {
+      const entries: ImportedWordEntry[] = []
+      for (const [word, priority] of Object.entries(data)) {
+        if (typeof word === 'string' && word.trim()) {
+          entries.push({
+            word: word.trim().toLowerCase(),
+            priority: typeof priority === 'number' ? priority : 1
+          })
+        }
       }
+      return entries
     }
 
-    return entries
+    throw new Error('JSON 格式错误，应为单词对象数组或 {"word": priority} 格式')
   } catch (error) {
     if (error instanceof SyntaxError) {
       throw new Error('JSON 解析失败，请检查格式是否正确')
@@ -39,16 +51,35 @@ export function parseJSONWordList(jsonString: string): ImportedWordEntry[] {
 
 /**
  * 将导入的单词转换为应用内的 Word 格式
- * 注意：由于没有完整信息，创建的是简化版 Word 对象
  */
-export function convertToWord(entry: ImportedWordEntry): Word {
+export function convertToWord(entry: Partial<Word> | ImportedWordEntry): Word {
+  const id = `word_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  
+  // 如果是完整的 Word 对象（或部分）
+  if ('word' in entry && typeof entry.word === 'string' && !('priority' in entry)) {
+    const wordEntry = entry as Partial<Word>
+    return {
+      id,
+      word: wordEntry.word || '',
+      phonetic: wordEntry.phonetic || { us: '', uk: '' },
+      meanings: wordEntry.meanings || [{ partOfSpeech: 'unknown', definition: '', translation: '待补充' }],
+      examples: wordEntry.examples || [],
+      synonyms: wordEntry.synonyms || [],
+      antonyms: wordEntry.antonyms || [],
+      collocations: wordEntry.collocations || [],
+      tags: wordEntry.tags || ['导入词汇'],
+      frequency: wordEntry.frequency || 'medium',
+      rootAnalysis: wordEntry.rootAnalysis,
+      audioUrl: wordEntry.audioUrl,
+    }
+  }
+
+  // 如果是旧版 ImportedWordEntry
+  const simpleEntry = entry as ImportedWordEntry
   return {
-    id: `imported_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    word: entry.word,
-    phonetic: {
-      us: '',
-      uk: '',
-    },
+    id,
+    word: simpleEntry.word,
+    phonetic: { us: '', uk: '' },
     meanings: [{
       partOfSpeech: 'unknown',
       definition: '',
@@ -61,6 +92,33 @@ export function convertToWord(entry: ImportedWordEntry): Word {
     tags: ['导入词汇'],
     frequency: 'medium',
   }
+}
+
+/**
+ * 导出词书为 JSON 文件
+ */
+export function exportBookAsJSON(bookName: string, words: Word[]) {
+  const data = {
+    bookName,
+    exportDate: new Date().toISOString(),
+    wordCount: words.length,
+    words: words.map(({ id, ...rest }) => rest) // 导出时不包含 ID，导入时重新生成
+  }
+  
+  const jsonString = JSON.stringify(data, null, 2)
+  const blob = new Blob([jsonString], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  
+  // 格式化日期作为文件名的一部分
+  const date = new Date().toISOString().split('T')[0]
+  link.href = url
+  link.download = `${bookName}_${date}.json`
+  
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
 }
 
 /**

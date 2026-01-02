@@ -1,0 +1,4 @@
+Contact: https://github.com/Freakz3z/Muse/issues
+Expires: 2027-01-01T00:00:00.000Z
+Preferred-Languages: zh, en
+Canonical: https://github.com/Freakz3z/Muse/blob/main/public/.well-known/security.txt

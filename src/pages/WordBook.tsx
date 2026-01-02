@@ -7,12 +7,14 @@ import {
   Check,
   FolderOpen,
   Upload,
+  Download,
   Eye,
   Sparkles,
   Trash2
 } from 'lucide-react'
 import { useAppStore } from '../store'
 import { WordBook } from '../types'
+import { exportBookAsJSON } from '../utils/word-import'
 import ImportModal from '../components/ImportModal'
 import WordListModal from '../components/WordListModal'
 import AIGenerateModal from '../components/AIGenerateModal'
@@ -246,11 +248,32 @@ function WordBookCard({
   onViewWords,
   canDelete
 }: WordBookCardProps) {
-  const { deleteBook } = useAppStore()
+  const { deleteBook, getWordsByBook } = useAppStore()
+  const [isExporting, setIsExporting] = useState(false)
   
   const handleViewWords = (e: React.MouseEvent) => {
     e.stopPropagation()
     onViewWords?.()
+  }
+
+  const handleExport = async (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (isExporting) return
+    
+    try {
+      setIsExporting(true)
+      const words = await getWordsByBook(book.id)
+      if (words.length === 0) {
+        alert('该词库暂无单词，无法导出')
+        return
+      }
+      exportBookAsJSON(book.name, words)
+    } catch (error) {
+      console.error('导出失败:', error)
+      alert('导出失败，请重试')
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   const handleDelete = async (e: React.MouseEvent) => {
@@ -300,6 +323,17 @@ function WordBookCard({
                 >
                   <Eye className="w-3.5 h-3.5" />
                   查看单词
+                </button>
+              )}
+              {book.wordCount > 0 && (
+                <button
+                  onClick={handleExport}
+                  disabled={isExporting}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 text-gray-600 border border-gray-100 rounded-lg text-xs font-semibold hover:bg-gray-100 transition-colors disabled:opacity-50"
+                  title="导出为 JSON"
+                >
+                  <Download className={`w-3.5 h-3.5 ${isExporting ? 'animate-bounce' : ''}`} />
+                  {isExporting ? '导出中...' : '导出'}
                 </button>
               )}
             </div>

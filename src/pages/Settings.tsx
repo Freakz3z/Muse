@@ -577,7 +577,7 @@ export default function Settings() {
           <div className="flex-1 space-y-3">
             <div>
               <h3 className="text-xl font-bold text-gray-800">Muse</h3>
-              <p className="text-sm text-gray-500">v1.4.3</p>
+              <p className="text-sm text-gray-500">v1.4.4</p>
             </div>
             
             <p className="text-gray-600 leading-relaxed">
