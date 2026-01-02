@@ -145,9 +145,6 @@ Muse's AI study plan feature creates scientific, feasible learning plans:
 
 ## 📝 Development Roadmap
 
-See [ROADMAP.md](ROADMAP.md)
-
-**Upcoming:**
 - [ ] Cloud sync
 - [ ] More vocabulary books
 - [ ] Community features
