@@ -1,7 +1,6 @@
 {
   "name": "muse-english",
   "version": "1.5.1",
-  "type": "module",
   "description": "Muse - AI-Driven Intelligent English Vocabulary Learning Assistant",
   "main": "dist-electron/main.js",
   "scripts": {
