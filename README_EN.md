@@ -158,17 +158,6 @@ Contributions welcome! Please submit Pull Requests or issues.
 
 Apache 2.0 License
 
-## 📜 Changelog
-
-See [CHANGELOG.md](CHANGELOG.md)
-
-### v1.5.0 (Latest)
-- ✨ AI study plan generator
-- 🎨 UI consistency improvements
-- 🐛 Fixed keyboard shortcuts
-- 🐛 Fixed audio repeating
-- 🔧 Adjusted rating buttons
-
 ---
 
 Made with ❤️ for English learners

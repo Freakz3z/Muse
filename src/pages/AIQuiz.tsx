@@ -252,7 +252,7 @@ export default function AIQuizPage() {
             </button>
 
             <p className="text-center text-gray-400 text-sm">
-              共 {currentBook ? currentBook.wordCount : words.length} 个单词可用于出题
+              共 {currentBook ? words.filter(w => currentBook.wordIds.includes(w.id)).length : words.length} 个单词可用于出题
             </p>
           </div>
         )}

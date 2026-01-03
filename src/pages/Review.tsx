@@ -221,7 +221,7 @@ export default function Review() {
               className="px-6 py-3 bg-violet-500 text-white rounded-xl font-medium hover:bg-violet-600 transition-all flex items-center justify-center gap-2"
             >
               <Zap className="w-4 h-4" />
-              快速学习
+              快速复习
             </button>
             <button
               onClick={loadWords}
