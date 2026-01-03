@@ -1,9 +1,9 @@
 {
   "name": "muse-english",
-  "version": "v1.5.0",
+  "version": "v1.5.1",
   "displayName": "Muse - AI英语学习助手",
   "description": "AI驱动的智能英语词汇学习助手",
-  "installCommand": "npm install",
+  "installCommand": "npm ci --prefer-offline --no-audit",
   "buildCommand": "npm run build:web",
   "assets": {
     "directory": "./dist",
