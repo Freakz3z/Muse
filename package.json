@@ -41,8 +41,14 @@
     "appId": "com.muse.english",
     "productName": "Muse",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "public"
     },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "package.json"
+    ],
     "win": {
       "target": "nsis",
       "icon": "public/Muse.ico"
