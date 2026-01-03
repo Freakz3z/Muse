@@ -39,7 +39,7 @@ const saveSearchHistory = (word: string) => {
 }
 
 export default function SearchPage() {
-  const { books, addWord, addWordToBook } = useAppStore()
+  const { books, addWord, addWordToBook, loadBooks } = useAppStore()
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -89,14 +89,21 @@ export default function SearchPage() {
   const handleSearch = async (word?: string) => {
     const queryWord = word || searchQuery.trim()
     if (!queryWord) return
-    
+
+    // 验证是否是有效的英文单词（只包含英文字母）
+    const isValidWord = /^[a-zA-Z]+$/.test(queryWord)
+    if (!isValidWord) {
+      setError('请输入有效的英文单词（仅包含字母）')
+      return
+    }
+
     // 检查AI是否配置
     const aiConfig = getAIConfig()
     if (!aiConfig.enabled) {
       setError('请先在设置中配置 AI 服务')
       return
     }
-    
+
     setSearchQuery(queryWord)
     setIsSearching(true)
     setError(null)
@@ -181,15 +188,18 @@ export default function SearchPage() {
 
   const handleAddToBook = async () => {
     if (!searchResult || !selectedBook) return
-    
+
     try {
       // 先保存单词到存储
       await wordStorage.save(searchResult)
       await addWord(searchResult)
-      
+
       // 添加到选中的词库
       await addWordToBook(selectedBook, searchResult.id)
-      
+
+      // 重新加载词库数据以更新单词数量
+      await loadBooks()
+
       setAddSuccess(true)
       setTimeout(() => {
         setAddSuccess(false)
@@ -477,7 +487,7 @@ export default function SearchPage() {
                             {book.name}
                           </div>
                           <div className="text-xs text-gray-500 mt-1">
-                            {book.wordCount} 个单词
+                            {book.wordIds.length} 个单词
                           </div>
                         </div>
                       </div>
