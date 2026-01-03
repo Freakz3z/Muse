@@ -83,6 +83,7 @@ export interface ShortcutSettings {
   markKnown: string;       // 标记认识
   markUnknown: string;     // 标记不认识
   playAudio: string;       // 播放发音
+  showAIAnalysis: string;  // 显示AI分析
   // 复习界面额外快捷键
   rateEasy: string;        // 评分：简单
   rateGood: string;        // 评分：一般
@@ -100,6 +101,7 @@ export const defaultShortcuts: ShortcutSettings = {
   markKnown: 'KeyD',
   markUnknown: 'KeyA',
   playAudio: 'KeyR',
+  showAIAnalysis: 'KeyW',
   rateEasy: 'Digit1',
   rateGood: 'Digit2',
   rateHard: 'Digit3',

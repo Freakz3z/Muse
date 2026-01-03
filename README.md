@@ -24,7 +24,7 @@
   <img src="https://img.shields.io/badge/React-18.2.0-61DAFB?logo=react" alt="React">
   <img src="https://img.shields.io/badge/TypeScript-5.3-3178C6?logo=typescript" alt="TypeScript">
   <img src="https://img.shields.io/badge/Vite-5.0-646CFF?logo=vite" alt="Vite">
-  <img src="https://img.shields.io/badge/Version-1.5.1-orange" alt="Version">
+  <img src="https://img.shields.io/badge/Version-1.5.2-orange" alt="Version">
   <img src="https://img.shields.io/badge/License-Apache_2.0-blue" alt="License">
 </p>
 
@@ -73,7 +73,7 @@
 ### 🎯 支持的 AI 服务
 | 提供商 | 支持模型 | 需要 API Key |
 |--------|---------|-------------|
-| **OpenAI** | GPT-4o, GPT-4o-mini 等（支持 DeepSeek、智谱 AI 等兼容协议） | ✅ 是 |
+| **OpenAI** | GPT-4o, GPT-4o-mini 等（支持 Qwen、DeepSeek、智谱 AI 等兼容协议） | ✅ 是 |
 | **Claude** | Claude 3.5 Sonnet, Haiku 等 | ✅ 是 |
 | **Gemini** | Gemini 1.5 Pro, Flash 等 | ✅ 是 |
 | **Ollama** | Llama3, Mistral 等开源模型 | ❌ 否（本地运行） |
@@ -226,6 +226,7 @@ Muse 的 AI 学习计划功能会根据你的具体情况，制定科学、可�
 | 快捷键 | 功能 |
 |----------|--------|
 | `Space` | 显示答案 |
+| `W` | AI 智能分析 |
 | `1` | 太简单（复习评分） |
 | `2` | 记住了（复习评分） |
 | `3` | 有点难（复习评分） |

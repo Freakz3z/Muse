@@ -24,7 +24,7 @@ export default function About() {
           <div className="flex-1 space-y-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-800 mb-2">Muse</h1>
-              <p className="text-gray-500">v1.5.1</p>
+              <p className="text-gray-500">v1.5.2</p>
             </div>
 
             <p className="text-gray-600 leading-relaxed">

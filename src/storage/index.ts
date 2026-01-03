@@ -115,17 +115,45 @@ export const bookStorage = {
 export const settingsStorage = {
   async get(): Promise<UserSettings> {
     const settings = await settingsStore.getItem<UserSettings>('settings');
-    return settings || {
-      dailyGoal: 20,
-      pronunciation: 'us',
-      autoPlay: true,
-      darkMode: false,
-      notifications: true,
-      reminderTime: '09:00',
-      studyMode: 'card_flip' as any,
-      shortcuts: defaultShortcuts,
-      quickReviewLimit: 30,
-      enableAIAnalysis: true,
+
+    // 如果没有设置,返回默认值
+    if (!settings) {
+      return {
+        dailyGoal: 20,
+        pronunciation: 'us',
+        autoPlay: true,
+        darkMode: false,
+        notifications: true,
+        reminderTime: '09:00',
+        studyMode: 'card_flip' as any,
+        shortcuts: defaultShortcuts,
+        quickReviewLimit: 30,
+        enableAIAnalysis: true,
+      };
+    }
+
+    // 迁移老用户的快捷键设置,添加缺失的showAIAnalysis字段
+    if (settings.shortcuts && !settings.shortcuts.showAIAnalysis) {
+      settings.shortcuts = {
+        ...settings.shortcuts,
+        showAIAnalysis: defaultShortcuts.showAIAnalysis,
+      };
+      // 保存更新后的设置
+      await settingsStore.setItem('settings', settings);
+    }
+
+    // 确保所有必需字段都存在
+    return {
+      dailyGoal: settings.dailyGoal ?? 20,
+      pronunciation: settings.pronunciation ?? 'us',
+      autoPlay: settings.autoPlay ?? true,
+      darkMode: settings.darkMode ?? false,
+      notifications: settings.notifications ?? true,
+      reminderTime: settings.reminderTime ?? '09:00',
+      studyMode: settings.studyMode ?? 'card_flip' as any,
+      shortcuts: settings.shortcuts ?? defaultShortcuts,
+      quickReviewLimit: settings.quickReviewLimit ?? 30,
+      enableAIAnalysis: settings.enableAIAnalysis ?? true,
     };
   },
 

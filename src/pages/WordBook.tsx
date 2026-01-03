@@ -1,16 +1,18 @@
 import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { 
-  Plus, 
-  Search, 
-  BookOpen, 
+import { motion, AnimatePresence } from 'framer-motion'
+import {
+  Plus,
+  Search,
+  BookOpen,
   Check,
   FolderOpen,
   Upload,
   Download,
   Eye,
   Sparkles,
-  Trash2
+  Trash2,
+  AlertTriangle,
+  X
 } from 'lucide-react'
 import { useAppStore } from '../store'
 import { WordBook } from '../types'
@@ -20,12 +22,13 @@ import WordListModal from '../components/WordListModal'
 import AIGenerateModal from '../components/AIGenerateModal'
 
 export default function WordBookPage() {
-  const { books, currentBook, selectBook, createBook } = useAppStore()
+  const { books, currentBook, selectBook, createBook, deleteBook } = useAppStore()
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showImportModal, setShowImportModal] = useState(false)
   const [showAIGenerateModal, setShowAIGenerateModal] = useState(false)
   const [showWordList, setShowWordList] = useState(false)
   const [viewingBook, setViewingBook] = useState<WordBook | null>(null)
+  const [deletingBook, setDeletingBook] = useState<WordBook | null>(null)
   const [newBookName, setNewBookName] = useState('')
   const [newBookDesc, setNewBookDesc] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -47,12 +50,23 @@ export default function WordBookPage() {
     setShowCreateModal(false)
   }
 
-  const filteredBooks = books.filter(book => 
+  const filteredBooks = books.filter(book =>
     book.name.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
   const builtinBooks = filteredBooks.filter(b => b.category === 'builtin')
   const customBooks = filteredBooks.filter(b => b.category === 'custom')
+
+  const confirmDelete = async () => {
+    if (deletingBook) {
+      await deleteBook(deletingBook.id)
+      setDeletingBook(null)
+    }
+  }
+
+  const handleDeleteBook = (book: WordBook) => {
+    setDeletingBook(book)
+  }
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -120,6 +134,7 @@ export default function WordBookPage() {
                   setViewingBook(book)
                   setShowWordList(true)
                 }}
+                onDelete={handleDeleteBook}
               />
             ))}
           </div>
@@ -142,6 +157,7 @@ export default function WordBookPage() {
                   setViewingBook(book)
                   setShowWordList(true)
                 }}
+                onDelete={handleDeleteBook}
               />
             ))}
           </div>
@@ -221,14 +237,61 @@ export default function WordBookPage() {
       )}
 
       {/* 查看词库单词列表弹窗 */}
-      <WordListModal 
-        isOpen={showWordList} 
+      <WordListModal
+        isOpen={showWordList}
         onClose={() => {
           setShowWordList(false)
           setViewingBook(null)
-        }} 
+        }}
         book={viewingBook}
       />
+
+      {/* 删除确认弹窗 */}
+      <AnimatePresence>
+        {deletingBook && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/30 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6"
+            >
+              <div className="flex items-start gap-4 mb-4">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-gray-900">删除词库</h3>
+                  <p className="text-sm text-gray-500 mt-0.5">此操作无法撤销</p>
+                </div>
+                <button
+                  onClick={() => setDeletingBook(null)}
+                  className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <p className="text-gray-700 mb-6">
+                确定要删除词库 <span className="font-semibold text-gray-900">"{deletingBook.name}"</span> 吗？该词库中的所有单词将被永久删除。
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setDeletingBook(null)}
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+                >
+                  取消
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 px-4 py-3 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-colors"
+                >
+                  确认删除
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -241,16 +304,17 @@ interface WordBookCardProps {
   onViewWords?: () => void
 }
 
-function WordBookCard({ 
-  book, 
-  isSelected, 
-  onSelect, 
+function WordBookCard({
+  book,
+  isSelected,
+  onSelect,
   onViewWords,
-  canDelete
-}: WordBookCardProps) {
-  const { deleteBook, getWordsByBook } = useAppStore()
+  canDelete,
+  onDelete
+}: WordBookCardProps & { onDelete?: (book: WordBook) => void }) {
+  const { getWordsByBook } = useAppStore()
   const [isExporting, setIsExporting] = useState(false)
-  
+
   const handleViewWords = (e: React.MouseEvent) => {
     e.stopPropagation()
     onViewWords?.()
@@ -259,7 +323,7 @@ function WordBookCard({
   const handleExport = async (e: React.MouseEvent) => {
     e.stopPropagation()
     if (isExporting) return
-    
+
     try {
       setIsExporting(true)
       const words = await getWordsByBook(book.id)
@@ -276,11 +340,9 @@ function WordBookCard({
     }
   }
 
-  const handleDelete = async (e: React.MouseEvent) => {
+  const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (confirm(`确定要删除词库 "${book.name}" 吗？`)) {
-      await deleteBook(book.id)
-    }
+    onDelete?.(book)
   }
   
   return (

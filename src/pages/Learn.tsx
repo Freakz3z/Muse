@@ -54,12 +54,13 @@ export default function Learn() {
   const [startTime, setStartTime] = useState<number>(0)
   const [sessionStartTime, setSessionStartTime] = useState<number>(0)
   const [correctCount, setCorrectCount] = useState(0)
-  
+
   // AI内容状态
   const [aiExamples, setAiExamples] = useState<GeneratedExample[]>([])
   const [aiExplanation, setAiExplanation] = useState<WordMeaningExplanation | null>(null)
   const [aiMemoryTip, setAiMemoryTip] = useState<string>('')
   const [isLoadingAI, setIsLoadingAI] = useState(false)
+  const [showAIAnalysis, setShowAIAnalysis] = useState(false)
 
   const currentWord = words[currentIndex]
 
@@ -101,6 +102,7 @@ export default function Learn() {
     setAiExamples([])
     setAiExplanation(null)
     setAiMemoryTip('')
+    setShowAIAnalysis(false)
   }, [currentIndex, currentWord])
 
   // 检查单词数据是否完整
@@ -118,49 +120,57 @@ export default function Learn() {
     return !hasValidTranslation || !hasValidPartOfSpeech
   }, [])
 
-  // 当显示答案时，自动加载AI内容并补充不完整的单词数据
-  useEffect(() => {
+  // 手动加载AI内容
+  const loadAIContent = useCallback(async () => {
+    if (!currentWord) return
+
     const aiConfig = getAIConfig()
-    // 检查 AI 是否配置以及用户是否启用了 AI 分析
-    if (!showAnswer || !currentWord || !aiConfig.enabled || !settings.enableAIAnalysis) return
-
-    const loadAIContent = async () => {
-      setIsLoadingAI(true)
-      try {
-        // 如果单词数据不完整，先用AI补充
-        if (isWordDataIncomplete(currentWord)) {
-          const enrichedWord = await dictionaryService.enrichWord(currentWord)
-          if (enrichedWord !== currentWord) {
-            // 更新当前单词数据
-            setWords(prevWords => prevWords.map((w, i) =>
-              i === currentIndex ? enrichedWord : w
-            ))
-          }
-        }
-
-        // 并行加载AI内容（例句和词义解释）
-        const [examples, explanation] = await Promise.all([
-          aiService.generateExamplesWithTranslation(currentWord.word).catch(() => []),
-          aiService.explainWordMeaning(currentWord.word).catch(() => null)
-        ])
-
-        setAiExamples(examples || [])
-        setAiExplanation(explanation)
-
-        // 使用AI生成记忆技巧（基于词义解释）
-        if (explanation?.detailedExplanation) {
-          const memoryTip = explanation.detailedExplanation
-          setAiMemoryTip(memoryTip)
-        }
-      } catch (error) {
-        console.error('Failed to load AI content:', error)
-      } finally {
-        setIsLoadingAI(false)
-      }
+    if (!aiConfig.enabled) {
+      alert('请先在设置中配置 AI 服务')
+      return
     }
 
-    loadAIContent()
-  }, [showAnswer, currentWord, currentIndex, isWordDataIncomplete, settings.enableAIAnalysis])
+    setIsLoadingAI(true)
+    setShowAIAnalysis(true)
+    try {
+      // 如果单词数据不完整，先用AI补充
+      if (isWordDataIncomplete(currentWord)) {
+        const enrichedWord = await dictionaryService.enrichWord(currentWord)
+        if (enrichedWord !== currentWord) {
+          // 更新当前单词数据
+          setWords(prevWords => prevWords.map((w, i) =>
+            i === currentIndex ? enrichedWord : w
+          ))
+        }
+      }
+
+      // 并行加载AI内容（例句和词义解释）
+      const [examples, explanation] = await Promise.all([
+        aiService.generateExamplesWithTranslation(currentWord.word).catch(() => []),
+        aiService.explainWordMeaning(currentWord.word).catch(() => null)
+      ])
+
+      setAiExamples(examples || [])
+      setAiExplanation(explanation)
+
+      // 使用AI生成记忆技巧（基于词义解释）
+      if (explanation?.detailedExplanation) {
+        const memoryTip = explanation.detailedExplanation
+        setAiMemoryTip(memoryTip)
+      }
+    } catch (error) {
+      console.error('Failed to load AI content:', error)
+    } finally {
+      setIsLoadingAI(false)
+    }
+  }, [currentWord, currentIndex, isWordDataIncomplete])
+
+  // 快捷键处理显示AI分析
+  const handleShortcutAIAnalysis = useCallback(() => {
+    if (showAnswer && !isLoadingAI && !showAIAnalysis) {
+      loadAIContent()
+    }
+  }, [showAnswer, isLoadingAI, showAIAnalysis, loadAIContent])
 
   const handleKnow = async () => {
     if (!currentWord) return
@@ -255,6 +265,7 @@ export default function Learn() {
     markKnown: handleShortcutKnow,
     markUnknown: handleShortcutUnknown,
     playAudio,
+    showAIAnalysis: handleShortcutAIAnalysis,
   }, !isLoading && !sessionComplete && words.length > 0)
 
   if (isLoading) {
@@ -438,102 +449,97 @@ export default function Learn() {
                       </div>
                     </div>
                   )}
-                  
-                  {aiExplanation && (
-                    <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-100">
-                      <div className="flex items-center gap-2 text-purple-600 mb-3">
-                        <Brain className="w-4 h-4" />
-                        <span className="text-sm font-medium">AI深度解释</span>
-                        <Sparkles className="w-3 h-3" />
-                      </div>
-                      <div className="space-y-2">
-                        <p className="text-gray-700 leading-relaxed font-medium">{aiExplanation.basicMeaning}</p>
-                        {aiExplanation.detailedExplanation && (
-                          <p className="text-gray-600 text-sm leading-relaxed">{aiExplanation.detailedExplanation}</p>
-                        )}
-                        {aiExplanation.usageNotes && (
-                          <div className="mt-2 pt-2 border-t border-purple-100">
-                            <p className="text-purple-600 text-xs font-medium mb-1">用法要点</p>
-                            <p className="text-gray-600 text-sm">{aiExplanation.usageNotes}</p>
-                          </div>
-                        )}
-                        {aiExplanation.commonMistakes && aiExplanation.commonMistakes.length > 0 && (
-                          <div className="mt-2 pt-2 border-t border-purple-100">
-                            <p className="text-orange-600 text-xs font-medium mb-1">常见错误</p>
-                            <div className="space-y-1">
-                              {aiExplanation.commonMistakes.map((mistake, idx) => (
-                                <p key={idx} className="text-gray-600 text-sm">• {mistake}</p>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
 
-                  {/* 例句区域（合并字典例句和AI例句） */}
-                  {(currentWord.examples.length > 0 || aiExamples.length > 0) && (
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-2 text-gray-500 text-sm">
-                        <Lightbulb className="w-4 h-4" />
-                        <span>例句</span>
-                      </div>
-                      
-                      {/* 字典例句 */}
-                      {currentWord.examples.slice(0, 2).map((example, index) => (
-                        <div key={`dict-${index}`} className="p-3 bg-gray-50 rounded-lg">
-                          <p className="text-gray-700 italic mb-1">"{example}"</p>
-                        </div>
-                      ))}
-                      
-                      {/* AI生成的例句 */}
-                      {aiExamples.length > 0 && (
-                        <>
-                          {aiExamples.slice(0, 3).map((example, index) => (
-                            <div key={`ai-${index}`} className="p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-100 relative">
-                              <div className="flex items-center gap-1 mb-2">
-                                <Sparkles className="w-3 h-3 text-purple-500" />
-                                <span className="text-xs text-purple-600 font-medium">AI例句</span>
+                  {showAIAnalysis && (
+                    <>
+                      {aiExplanation && (
+                        <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-100">
+                          <div className="flex items-center gap-2 text-purple-600 mb-3">
+                            <Brain className="w-4 h-4" />
+                            <span className="text-sm font-medium">AI深度解释</span>
+                            <Sparkles className="w-3 h-3" />
+                          </div>
+                          <div className="space-y-2">
+                            <p className="text-gray-700 leading-relaxed font-medium">{aiExplanation.basicMeaning}</p>
+                            {aiExplanation.detailedExplanation && (
+                              <p className="text-gray-600 text-sm leading-relaxed">{aiExplanation.detailedExplanation}</p>
+                            )}
+                            {aiExplanation.usageNotes && (
+                              <div className="mt-2 pt-2 border-t border-purple-100">
+                                <p className="text-purple-600 text-xs font-medium mb-1">用法要点</p>
+                                <p className="text-gray-600 text-sm">{aiExplanation.usageNotes}</p>
                               </div>
-                              <p className="text-gray-700 italic mb-1">"{example.sentence}"</p>
-                              <p className="text-gray-600 text-sm">{example.translation}</p>
-                              <button
-                                onClick={() => copyToClipboard(example.sentence)}
-                                className="absolute top-2 right-2 p-1 hover:bg-white rounded transition-colors"
-                                title="复制例句"
-                              >
-                                <Copy className="w-3 h-3 text-purple-400" />
-                              </button>
+                            )}
+                            {aiExplanation.commonMistakes && aiExplanation.commonMistakes.length > 0 && (
+                              <div className="mt-2 pt-2 border-t border-purple-100">
+                                <p className="text-orange-600 text-xs font-medium mb-1">常见错误</p>
+                                <div className="space-y-1">
+                                  {aiExplanation.commonMistakes.map((mistake, idx) => (
+                                    <p key={idx} className="text-gray-600 text-sm">• {mistake}</p>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 例句区域（合并字典例句和AI例句） */}
+                      {(currentWord.examples.length > 0 || aiExamples.length > 0) && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-gray-500 text-sm">
+                            <Lightbulb className="w-4 h-4" />
+                            <span>例句</span>
+                          </div>
+
+                          {/* 字典例句 */}
+                          {currentWord.examples.slice(0, 2).map((example, index) => (
+                            <div key={`dict-${index}`} className="p-3 bg-gray-50 rounded-lg">
+                              <p className="text-gray-700 italic mb-1">"{example}"</p>
                             </div>
                           ))}
-                        </>
-                      )}
-                    </div>
-                  )}
 
-                  {/* AI记忆技巧 */}
-                  {aiMemoryTip && (
-                    <div className="p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg border border-yellow-200">
-                      <div className="flex items-center gap-2 text-orange-600 mb-2">
-                        <Lightbulb className="w-4 h-4" />
-                        <span className="text-sm font-medium">深度理解</span>
-                        <Sparkles className="w-3 h-3" />
-                      </div>
-                      <p className="text-gray-700 leading-relaxed text-sm">{aiMemoryTip}</p>
-                    </div>
+                          {/* AI生成的例句 */}
+                          {aiExamples.length > 0 && (
+                            <>
+                              {aiExamples.slice(0, 3).map((example, index) => (
+                                <div key={`ai-${index}`} className="p-3 bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg border border-purple-100 relative">
+                                  <div className="flex items-center gap-1 mb-2">
+                                    <Sparkles className="w-3 h-3 text-purple-500" />
+                                    <span className="text-xs text-purple-600 font-medium">AI例句</span>
+                                  </div>
+                                  <p className="text-gray-700 italic mb-1">"{example.sentence}"</p>
+                                  <p className="text-gray-600 text-sm">{example.translation}</p>
+                                  <button
+                                    onClick={() => copyToClipboard(example.sentence)}
+                                    className="absolute top-2 right-2 p-1 hover:bg-white rounded transition-colors"
+                                    title="复制例句"
+                                  >
+                                    <Copy className="w-3 h-3 text-purple-400" />
+                                  </button>
+                                </div>
+                              ))}
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      {/* AI记忆技巧 */}
+                      {aiMemoryTip && (
+                        <div className="p-4 bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg border border-yellow-200">
+                          <div className="flex items-center gap-2 text-orange-600 mb-2">
+                            <Lightbulb className="w-4 h-4" />
+                            <span className="text-sm font-medium">深度理解</span>
+                            <Sparkles className="w-3 h-3" />
+                          </div>
+                          <p className="text-gray-700 leading-relaxed text-sm">{aiMemoryTip}</p>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </motion.div>
-            ) : (
-              <div className="p-8 text-center">
-                <button
-                  onClick={() => setShowAnswer(true)}
-                  className="text-blue-500 hover:text-blue-600 font-medium"
-                >
-                  点击查看释义
-                </button>
-              </div>
-            )}
+            ) : null}
           </AnimatePresence>
 
           {/* 操作按钮 */}
@@ -550,6 +556,24 @@ export default function Learn() {
                   </span>
                   <span className="text-xs opacity-60">{getShortcutDisplay(settings.shortcuts?.markUnknown || 'KeyA')}</span>
                 </button>
+                {!showAIAnalysis && !isLoadingAI && (
+                  <button
+                    onClick={loadAIContent}
+                    className="flex-1 max-w-40 py-4 bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 text-purple-700 rounded-xl font-medium transition-colors flex flex-col items-center gap-1 border-2 border-dashed border-purple-200 hover:border-purple-300"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Sparkles className="w-5 h-5" />
+                      AI分析
+                    </span>
+                    <span className="text-xs opacity-60">{getShortcutDisplay(settings.shortcuts?.showAIAnalysis || 'KeyW')}</span>
+                  </button>
+                )}
+                {isLoadingAI && (
+                  <div className="flex-1 max-w-40 py-4 bg-purple-50 rounded-xl font-medium flex flex-col items-center gap-1">
+                    <Loader2 className="w-5 h-5 animate-spin text-purple-500" />
+                    <span className="text-sm text-purple-600">分析中...</span>
+                  </div>
+                )}
                 <button
                   onClick={handleKnow}
                   className="flex-1 max-w-40 py-4 bg-green-50 hover:bg-green-100 text-green-600 rounded-xl font-medium transition-colors flex flex-col items-center gap-1"
@@ -597,13 +621,6 @@ export default function Learn() {
           <span>下一个</span>
           <ChevronRight className="w-5 h-5" />
         </button>
-      </div>
-      
-      {/* 快捷键提示 */}
-      <div className="mt-4 text-center">
-        <p className="text-xs text-gray-400">
-          快捷键: {getShortcutDisplay(settings.shortcuts?.playAudio || 'KeyR')} 播放发音
-        </p>
       </div>
     </div>
   )

@@ -440,6 +440,13 @@ export default function Settings() {
                       onEdit={() => setEditingShortcut('playAudio')}
                       onCancel={() => setEditingShortcut(null)}
                     />
+                    <ShortcutItem
+                      label="AI 智能分析"
+                      currentValue={settings.shortcuts?.showAIAnalysis || defaultShortcuts.showAIAnalysis}
+                      isEditing={editingShortcut === 'showAIAnalysis'}
+                      onEdit={() => setEditingShortcut('showAIAnalysis')}
+                      onCancel={() => setEditingShortcut(null)}
+                    />
                   </div>
                 </div>
                 
