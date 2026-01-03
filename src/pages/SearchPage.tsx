@@ -39,7 +39,7 @@ const saveSearchHistory = (word: string) => {
 }
 
 export default function SearchPage() {
-  const { books, addWord, addWordToBook, loadBooks } = useAppStore()
+  const { books, addWord, addWordToBook } = useAppStore()
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -190,15 +190,25 @@ export default function SearchPage() {
     if (!searchResult || !selectedBook) return
 
     try {
+      // 检查单词是否已存在于词库中（通过单词文本而非ID）
+      const book = books.find(b => b.id === selectedBook)
+      if (book) {
+        // 获取词库中的所有单词
+        const bookWords = await wordStorage.getByIds(book.wordIds)
+        const wordExists = bookWords.some(w => w.word.toLowerCase() === searchResult.word.toLowerCase())
+
+        if (wordExists) {
+          setError(`"${searchResult.word}" 已存在于词库 "${book.name}" 中`)
+          return
+        }
+      }
+
       // 先保存单词到存储
       await wordStorage.save(searchResult)
       await addWord(searchResult)
 
       // 添加到选中的词库
       await addWordToBook(selectedBook, searchResult.id)
-
-      // 重新加载词库数据以更新单词数量
-      await loadBooks()
 
       setAddSuccess(true)
       setTimeout(() => {
