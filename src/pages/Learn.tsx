@@ -34,8 +34,8 @@ const getAIConfig = (): AIConfig => {
 }
 
 export default function Learn() {
-  const { 
-    currentBook, 
+  const {
+    currentBook,
     getNewWords, 
     updateRecord, 
     updateTodayStats, 
@@ -121,8 +121,9 @@ export default function Learn() {
   // 当显示答案时，自动加载AI内容并补充不完整的单词数据
   useEffect(() => {
     const aiConfig = getAIConfig()
-    if (!showAnswer || !currentWord || !aiConfig.enabled) return
-    
+    // 检查 AI 是否配置以及用户是否启用了 AI 分析
+    if (!showAnswer || !currentWord || !aiConfig.enabled || !settings.enableAIAnalysis) return
+
     const loadAIContent = async () => {
       setIsLoadingAI(true)
       try {
@@ -131,7 +132,7 @@ export default function Learn() {
           const enrichedWord = await dictionaryService.enrichWord(currentWord)
           if (enrichedWord !== currentWord) {
             // 更新当前单词数据
-            setWords(prevWords => prevWords.map((w, i) => 
+            setWords(prevWords => prevWords.map((w, i) =>
               i === currentIndex ? enrichedWord : w
             ))
           }
@@ -142,10 +143,10 @@ export default function Learn() {
           aiService.generateExamplesWithTranslation(currentWord.word).catch(() => []),
           aiService.explainWordMeaning(currentWord.word).catch(() => null)
         ])
-        
+
         setAiExamples(examples || [])
         setAiExplanation(explanation)
-        
+
         // 使用AI生成记忆技巧（基于词义解释）
         if (explanation?.detailedExplanation) {
           const memoryTip = explanation.detailedExplanation
@@ -157,9 +158,9 @@ export default function Learn() {
         setIsLoadingAI(false)
       }
     }
-    
+
     loadAIContent()
-  }, [showAnswer, currentWord, currentIndex, isWordDataIncomplete])
+  }, [showAnswer, currentWord, currentIndex, isWordDataIncomplete, settings.enableAIAnalysis])
 
   const handleKnow = async () => {
     if (!currentWord) return

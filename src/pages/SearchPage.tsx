@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { 
   Search, 
@@ -39,7 +39,7 @@ const saveSearchHistory = (word: string) => {
 }
 
 export default function SearchPage() {
-  const { books, addWord, addWordToBook } = useAppStore()
+  const { books, addWord, addWordToBook, words } = useAppStore()
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -51,9 +51,27 @@ export default function SearchPage() {
   const [addSuccess, setAddSuccess] = useState(false)
   const [duplicateWordError, setDuplicateWordError] = useState<string | null>(null)
   const [searchHistory, setSearchHistory] = useState<string[]>(getSearchHistory())
+  const [wordExistsInBooks, setWordExistsInBooks] = useState<Set<string>>(new Set())
 
   // 获取自定义词库
   const customBooks = books.filter(b => b.category === 'custom')
+
+  // 检查单词在哪些词库中已存在
+  useEffect(() => {
+    if (searchResult) {
+      const existsIn = new Set<string>()
+      customBooks.forEach(book => {
+        const bookWords = book.wordIds.map(id => {
+          const word = words.find(w => w.id === id)
+          return word?.word.toLowerCase()
+        }).filter(Boolean)
+        if (bookWords.includes(searchResult.word.toLowerCase())) {
+          existsIn.add(book.id)
+        }
+      })
+      setWordExistsInBooks(existsIn)
+    }
+  }, [searchResult, customBooks, words])
 
   // 流式显示AI解释
   const displayExplanationWithEffect = async (explanation: WordMeaningExplanation) => {
@@ -498,37 +516,49 @@ export default function SearchPage() {
             {customBooks.length > 0 ? (
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3 max-h-64 overflow-y-auto">
-                  {customBooks.map((book) => (
-                    <button
-                      key={book.id}
-                      onClick={() => setSelectedBook(book.id === selectedBook ? '' : book.id)}
-                      className={`relative p-4 rounded-xl border-2 transition-all text-left ${
-                        selectedBook === book.id
-                          ? 'border-purple-500 bg-purple-50'
-                          : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      <div className="flex items-start gap-2">
-                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                  {customBooks.map((book) => {
+                    const wordExists = wordExistsInBooks.has(book.id)
+                    return (
+                      <button
+                        key={book.id}
+                        onClick={() => !wordExists && setSelectedBook(book.id === selectedBook ? '' : book.id)}
+                        disabled={wordExists}
+                        className={`relative p-4 rounded-xl border-2 transition-all text-left ${
                           selectedBook === book.id
-                            ? 'border-purple-500 bg-purple-500'
-                            : 'border-gray-300'
-                        }`}>
-                          {selectedBook === book.id && (
-                            <Check className="w-3 h-3 text-white" />
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium text-gray-900 truncate">
-                            {book.name}
+                            ? 'border-purple-500 bg-purple-50'
+                            : wordExists
+                            ? 'border-gray-100 bg-gray-50 cursor-not-allowed opacity-60'
+                            : 'border-gray-200 hover:border-purple-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-start gap-2">
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                            selectedBook === book.id
+                              ? 'border-purple-500 bg-purple-500'
+                              : wordExists
+                              ? 'border-gray-300 bg-gray-300'
+                              : 'border-gray-300'
+                          }`}>
+                            {selectedBook === book.id ? (
+                              <Check className="w-3 h-3 text-white" />
+                            ) : wordExists ? (
+                              <X className="w-3 h-3 text-gray-500" />
+                            ) : null}
                           </div>
-                          <div className="text-xs text-gray-500 mt-1">
-                            {book.wordIds.length} 个单词
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-gray-900 truncate">
+                              {book.name}
+                            </div>
+                            {wordExists && (
+                              <div className="text-xs text-gray-500 mt-1">
+                                该单词已存在
+                              </div>
+                            )}
                           </div>
                         </div>
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    )
+                  })}
                 </div>
                 
                 <button
