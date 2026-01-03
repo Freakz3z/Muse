@@ -1,10 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Volume2, 
-  RefreshCw, 
+import {
+  Volume2,
+  RefreshCw,
   Award,
-  Clock
+  Clock,
+  Zap,
+  Brain
 } from 'lucide-react'
 import { useAppStore } from '../store'
 import { Word } from '../types'
@@ -12,16 +14,20 @@ import ProgressBar from '../components/ProgressBar'
 import { getQualityFromResponse } from '../utils/spaced-repetition'
 import { useShortcuts, getShortcutDisplay } from '../hooks/useShortcuts'
 
+type ReviewMode = 'smart' | 'quick'
+
 export default function Review() {
-  const { 
-    getWordsToReview, 
-    updateRecord, 
-    updateTodayStats, 
+  const {
+    getWordsToReview,
+    getAllLearnedWords,
+    updateRecord,
+    updateTodayStats,
     todayStats,
     settings,
     startSession,
     endSession,
-    recordWordResult
+    recordWordResult,
+    records
   } = useAppStore()
 
   const [words, setWords] = useState<Word[]>([])
@@ -32,6 +38,7 @@ export default function Review() {
   const [startTime, setStartTime] = useState<number>(0)
   const [correctCount, setCorrectCount] = useState(0)
   const [sessionStartTime, setSessionStartTime] = useState<number>(0)
+  const [reviewMode, setReviewMode] = useState<ReviewMode>('smart')
 
   const currentWord = words[currentIndex]
 
@@ -41,9 +48,26 @@ export default function Review() {
 
   const loadWords = async () => {
     setIsLoading(true)
-    const reviewWords = await getWordsToReview()
+
+    let reviewWords: Word[] = []
+
+    if (reviewMode === 'smart') {
+      // 智能复习模式：使用 SM-2 算法，只获取到期的单词
+      reviewWords = await getWordsToReview()
+    } else {
+      // 快速复习模式：获取所有学过的单词
+      const learnedWords = await getAllLearnedWords()
+      // 按最近学习时间排序
+      reviewWords = learnedWords.sort((a, b) => {
+        const recordA = records.get(a.id)
+        const recordB = records.get(b.id)
+        return (recordB?.lastReviewAt || 0) - (recordA?.lastReviewAt || 0)
+      })
+    }
+
     // 限制每次复习数量
-    const limitedWords = reviewWords.slice(0, 30)
+    const limit = reviewMode === 'quick' ? (settings.quickReviewLimit || 30) : 30
+    const limitedWords = reviewWords.slice(0, limit)
     setWords(limitedWords)
     setCurrentIndex(0)
     setShowAnswer(false)
@@ -55,6 +79,13 @@ export default function Review() {
     }
     setIsLoading(false)
   }
+
+  // 当切换复习模式时重新加载单词
+  useEffect(() => {
+    if (!isLoading) {
+      loadWords()
+    }
+  }, [reviewMode])
 
   const playAudio = useCallback(() => {
     if (!currentWord) return
@@ -170,21 +201,36 @@ export default function Review() {
   if (words.length === 0) {
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="text-center max-w-md">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Award className="w-10 h-10 text-green-500" />
+        <div className="text-center max-w-md w-full">
+          <div className={`w-20 h-20 ${reviewMode === 'smart' ? 'bg-green-100' : 'bg-violet-100'} rounded-full flex items-center justify-center mx-auto mb-4`}>
+            <Award className={`w-10 h-10 ${reviewMode === 'smart' ? 'text-green-500' : 'text-violet-500'}`} />
           </div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-2">暂无待复习单词</h2>
-          <p className="text-gray-500 mb-6">
-            所有单词都在记忆巩固期，请稍后再来复习
+          <h2 className="text-2xl font-bold text-gray-800 mb-2">
+            {reviewMode === 'smart' ? '暂无待复习单词' : '还没有学过单词'}
+          </h2>
+          <p className="text-gray-500 mb-8">
+            {reviewMode === 'smart'
+              ? '所有单词都在记忆巩固期，请稍后再来复习'
+              : '先去学习一些单词，再来复习吧！'}
           </p>
-          <button
-            onClick={loadWords}
-            className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors inline-flex items-center gap-2"
-          >
-            <RefreshCw className="w-4 h-4" />
-            刷新
-          </button>
+
+          {/* 操作按钮组 */}
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setReviewMode('quick')}
+              className="px-6 py-3 bg-violet-500 text-white rounded-xl font-medium hover:bg-violet-600 transition-all flex items-center justify-center gap-2"
+            >
+              <Zap className="w-4 h-4" />
+              快速学习
+            </button>
+            <button
+              onClick={loadWords}
+              className="px-6 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-medium hover:border-gray-300 hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              刷新
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -193,44 +239,45 @@ export default function Review() {
   if (sessionComplete) {
     const accuracy = words.length > 0 ? Math.round((correctCount / words.length) * 100) : 0
     const duration = Math.round((Date.now() - sessionStartTime) / 60000)
-    
+
     return (
       <div className="h-full flex items-center justify-center">
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="text-center max-w-md"
+          className="text-center max-w-md w-full"
         >
-          <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6">
+          <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
             <Award className="w-12 h-12 text-white" />
           </div>
           <h2 className="text-3xl font-bold text-gray-800 mb-2">复习完成！</h2>
-          <p className="text-gray-500 mb-6">本轮复习了 {words.length} 个单词</p>
-          
-          <div className="bg-white rounded-xl p-6 shadow-sm mb-6">
+          <p className="text-gray-500 mb-8">本轮复习了 {words.length} 个单词</p>
+
+          <div className="bg-white rounded-2xl p-6 shadow-sm mb-8 border border-gray-100">
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
                 <p className="text-3xl font-bold text-green-500">{correctCount}</p>
-                <p className="text-gray-500 text-sm">记住了</p>
+                <p className="text-gray-500 text-sm mt-1">记住了</p>
               </div>
               <div className="text-center">
                 <p className="text-3xl font-bold text-orange-500">{words.length - correctCount}</p>
-                <p className="text-gray-500 text-sm">忘记了</p>
+                <p className="text-gray-500 text-sm mt-1">忘记了</p>
               </div>
               <div className="text-center">
                 <p className="text-3xl font-bold text-blue-500">{duration}</p>
-                <p className="text-gray-500 text-sm">分钟</p>
+                <p className="text-gray-500 text-sm mt-1">分钟</p>
               </div>
             </div>
-            <div className="mt-4 pt-4 border-t">
+            <div className="mt-6 pt-6 border-t border-gray-100">
               <p className="text-gray-600">正确率: <span className="font-bold text-green-500">{accuracy}%</span></p>
             </div>
           </div>
 
           <button
             onClick={loadWords}
-            className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl font-medium hover:shadow-lg transition-shadow"
+            className="w-full px-6 py-3 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-all flex items-center justify-center gap-2"
           >
+            <RefreshCw className="w-4 h-4" />
             继续复习
           </button>
         </motion.div>
@@ -240,9 +287,63 @@ export default function Review() {
 
   return (
     <div className="max-w-3xl mx-auto">
+      {/* 复习模式切换 */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-6"
+      >
+        <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-700">复习模式</h3>
+            <span className="text-xs text-gray-500">
+              {reviewMode === 'smart' ? '基于艾宾浩斯遗忘曲线' : '复习所有学过的单词'}
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setReviewMode('smart')}
+              className={`p-3 rounded-xl border-2 transition-all ${
+                reviewMode === 'smart'
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Brain className={`w-5 h-5 ${reviewMode === 'smart' ? 'text-blue-500' : 'text-gray-400'}`} />
+                <div className="text-left">
+                  <div className={`font-semibold text-sm ${reviewMode === 'smart' ? 'text-blue-600' : 'text-gray-700'}`}>智能复习</div>
+                  <div className={`text-xs ${reviewMode === 'smart' ? 'text-blue-500' : 'text-gray-500'}`}>
+                    SM-2 算法
+                  </div>
+                </div>
+              </div>
+            </button>
+            <button
+              onClick={() => setReviewMode('quick')}
+              className={`p-3 rounded-xl border-2 transition-all ${
+                reviewMode === 'quick'
+                  ? 'border-violet-500 bg-violet-50'
+                  : 'border-gray-200 bg-white hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Zap className={`w-5 h-5 ${reviewMode === 'quick' ? 'text-violet-500' : 'text-gray-400'}`} />
+                <div className="text-left">
+                  <div className={`font-semibold text-sm ${reviewMode === 'quick' ? 'text-violet-600' : 'text-gray-700'}`}>快速复习</div>
+                  <div className={`text-xs ${reviewMode === 'quick' ? 'text-violet-500' : 'text-gray-500'}`}>
+                    所有单词
+                  </div>
+                </div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </motion.div>
+
       {/* 进度条 */}
       <div className="mb-6">
-        <ProgressBar current={currentIndex + 1} total={words.length} color="green" />
+        <ProgressBar current={currentIndex + 1} total={words.length} color={reviewMode === 'smart' ? 'green' : 'orange'} />
       </div>
 
       {/* 单词卡片 */}

@@ -70,6 +70,7 @@ export interface UserSettings {
   reminderTime: string;        // 提醒时间
   studyMode: StudyMode;        // 学习模式
   shortcuts: ShortcutSettings; // 快捷键设置
+  quickReviewLimit: number;    // 快速复习单词数量
 }
 
 // 快捷键设置

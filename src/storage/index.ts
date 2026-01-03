@@ -124,6 +124,7 @@ export const settingsStorage = {
       reminderTime: '09:00',
       studyMode: 'card_flip' as any,
       shortcuts: defaultShortcuts,
+      quickReviewLimit: 30,
     };
   },
 

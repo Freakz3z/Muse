@@ -49,6 +49,7 @@ interface AppState {
   loadRecords: () => Promise<void>;
   updateRecord: (wordId: string, correct: boolean, quality: number) => Promise<void>;
   getWordsToReview: () => Promise<Word[]>;
+  getAllLearnedWords: () => Promise<Word[]>;
   getNewWords: (count: number) => Promise<Word[]>;
   
   // 词库操作
@@ -95,6 +96,7 @@ const getDefaultSettings = (): UserSettings => ({
   reminderTime: '09:00',
   studyMode: 'card_flip' as any,
   shortcuts: defaultShortcuts,
+  quickReviewLimit: 30,
 });
 
 const getTodayDateString = () => {
@@ -223,7 +225,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   
   getWordsToReview: async () => {
     let { words, records } = get();
-    
+
     // 如果 words 为空，尝试重新加载
     if (words.length === 0) {
       words = await wordStorage.getAll();
@@ -234,7 +236,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const dueRecords = Array.from(records.values())
       .filter(r => r.nextReviewAt <= now)
       .sort((a, b) => a.nextReviewAt - b.nextReviewAt);
-    
+
     const dueWordIds = new Set(dueRecords.map(r => r.wordId));
     const reviewWords = words.filter(w => dueWordIds.has(w.id));
 
@@ -245,7 +247,23 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     return reviewWords;
   },
-  
+
+  getAllLearnedWords: async () => {
+    let { words, records } = get();
+
+    // 如果 words 为空，尝试重新加载
+    if (words.length === 0) {
+      words = await wordStorage.getAll();
+      set({ words });
+    }
+
+    // 获取所有有学习记录的单词
+    const learnedWordIds = new Set(records.keys());
+    const learnedWords = words.filter(w => learnedWordIds.has(w.id));
+
+    return learnedWords;
+  },
+
   getNewWords: async (count) => {
     const { words, records, currentBook } = get();
     if (!currentBook) return [];

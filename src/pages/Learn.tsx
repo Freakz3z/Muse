@@ -1,18 +1,20 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Volume2, 
-  ChevronLeft, 
-  ChevronRight, 
-  Check, 
-  X, 
+import {
+  Volume2,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  X,
   BookOpen,
   Lightbulb,
   Download,
   Sparkles,
   Brain,
   Copy,
-  Loader2
+  Loader2,
+  Settings as SettingsIcon,
+  RotateCcw
 } from 'lucide-react'
 import { useAppStore } from '../store'
 import { Word } from '../types'
@@ -23,6 +25,7 @@ import { useShortcuts, getShortcutDisplay } from '../hooks/useShortcuts'
 import { aiService } from '../services/ai'
 import { dictionaryService } from '../services/dictionary'
 import { GeneratedExample, WordMeaningExplanation, AIConfig, defaultAIConfig } from '../services/ai/types'
+import { Link } from 'react-router-dom'
 
 // 获取AI配置
 const getAIConfig = (): AIConfig => {
@@ -266,13 +269,13 @@ export default function Learn() {
 
   if (words.length === 0) {
     // 检查当前词库是否需要先下载
-    const needsDownload = currentBook && 
-      currentBook.wordIds.length === 0 && 
+    const needsDownload = currentBook &&
+      currentBook.wordIds.length === 0 &&
       currentBook.id.replace('book_', '') in presetWordLists
-    
+
     return (
       <div className="h-full flex items-center justify-center">
-        <div className="text-center max-w-md">
+        <div className="text-center max-w-md w-full">
           {needsDownload ? (
             <>
               <div className="w-20 h-20 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -284,13 +287,13 @@ export default function Learn() {
                 <br />
                 请前往<span className="text-blue-500 font-medium">词库管理</span>页面下载。
               </p>
-              <a
-                href="#/wordbook"
+              <Link
+                to="/wordbook"
                 className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl font-medium hover:shadow-lg transition-shadow"
               >
                 <BookOpen className="w-5 h-5" />
                 前往词库管理
-              </a>
+              </Link>
             </>
           ) : (
             <>
@@ -299,11 +302,27 @@ export default function Learn() {
               </div>
               <h2 className="text-2xl font-bold text-gray-800 mb-2">今日学习已完成！</h2>
               <p className="text-gray-500 mb-6">
-                {currentBook 
+                {currentBook
                   ? `词库「${currentBook.name}」中暂无更多新词，或今日目标已达成`
                   : '请先选择一个词库开始学习'
                 }
               </p>
+              <div className="grid grid-cols-2 gap-3">
+                <Link
+                  to="/wordbook"
+                  className="px-6 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-medium hover:border-gray-300 hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+                >
+                  <BookOpen className="w-4 h-4" />
+                  词库
+                </Link>
+                <Link
+                  to="/settings"
+                  className="px-6 py-3 bg-white border border-gray-200 text-gray-700 rounded-xl font-medium hover:border-gray-300 hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
+                >
+                  <SettingsIcon className="w-4 h-4" />
+                  设置
+                </Link>
+              </div>
             </>
           )}
         </div>
@@ -318,34 +337,35 @@ export default function Learn() {
         <motion.div
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="text-center max-w-md"
+          className="text-center max-w-md w-full"
         >
-          <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-6">
+          <div className="w-24 h-24 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
             <Check className="w-12 h-12 text-white" />
           </div>
           <h2 className="text-3xl font-bold text-gray-800 mb-2">学习完成！</h2>
-          <p className="text-gray-500 mb-6">本轮学习了 {words.length} 个单词</p>
-          
-          <div className="bg-white rounded-xl p-6 shadow-sm mb-6">
-            <div className="grid grid-cols-2 gap-4">
+          <p className="text-gray-500 mb-8">本轮学习了 {words.length} 个单词</p>
+
+          <div className="bg-white rounded-2xl p-6 shadow-sm mb-8 border border-gray-100">
+            <div className="grid grid-cols-2 gap-6">
               <div className="text-center">
                 <p className="text-3xl font-bold text-green-500">{correctCount}</p>
-                <p className="text-gray-500 text-sm">掌握</p>
+                <p className="text-gray-500 text-sm mt-1">掌握</p>
               </div>
               <div className="text-center">
                 <p className="text-3xl font-bold text-orange-500">{words.length - correctCount}</p>
-                <p className="text-gray-500 text-sm">需加强</p>
+                <p className="text-gray-500 text-sm mt-1">需加强</p>
               </div>
             </div>
-            <div className="mt-4 pt-4 border-t">
+            <div className="mt-6 pt-6 border-t border-gray-100">
               <p className="text-gray-600">正确率: <span className="font-bold text-blue-500">{accuracy}%</span></p>
             </div>
           </div>
 
           <button
             onClick={loadWords}
-            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl font-medium hover:shadow-lg transition-shadow"
+            className="w-full px-6 py-3 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 transition-all flex items-center justify-center gap-2"
           >
+            <RotateCcw className="w-4 h-4" />
             继续学习
           </button>
         </motion.div>

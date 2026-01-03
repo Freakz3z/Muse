@@ -1,16 +1,17 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
-import { 
-  Home, 
-  BookOpen, 
-  RefreshCw, 
-  Library, 
-  BarChart3, 
+import {
+  Home,
+  BookOpen,
+  RefreshCw,
+  Library,
+  BarChart3,
   Settings,
   Minus,
   Square,
   X,
   Brain,
-  Search
+  Search,
+  Info
 } from 'lucide-react'
 
 const navItems = [
@@ -22,6 +23,7 @@ const navItems = [
   { path: '/wordbook', icon: Library, label: '词库' },
   { path: '/statistics', icon: BarChart3, label: '统计' },
   { path: '/settings', icon: Settings, label: '设置' },
+  { path: '/about', icon: Info, label: '关于' },
 ]
 
 export default function Layout() {

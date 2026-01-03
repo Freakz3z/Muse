@@ -9,6 +9,7 @@ import Review from './pages/Review'
 import WordBook from './pages/WordBook'
 import Statistics from './pages/Statistics'
 import Settings from './pages/Settings'
+import About from './pages/About'
 import AIQuiz from './pages/AIQuiz'
 import SearchPage from './pages/SearchPage'
 import SplashScreen from './components/SplashScreen'
@@ -38,6 +39,7 @@ function App() {
             <Route path="wordbook" element={<WordBook />} />
             <Route path="statistics" element={<Statistics />} />
             <Route path="settings" element={<Settings />} />
+            <Route path="about" element={<About />} />
           </Route>
         </Routes>
       )}

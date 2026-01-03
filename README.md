@@ -24,7 +24,7 @@
   <img src="https://img.shields.io/badge/React-18.2.0-61DAFB?logo=react" alt="React">
   <img src="https://img.shields.io/badge/TypeScript-5.3-3178C6?logo=typescript" alt="TypeScript">
   <img src="https://img.shields.io/badge/Vite-5.0-646CFF?logo=vite" alt="Vite">
-  <img src="https://img.shields.io/badge/Version-1.5.0-orange" alt="Version">
+  <img src="https://img.shields.io/badge/Version-1.5.1-orange" alt="Version">
   <img src="https://img.shields.io/badge/License-Apache_2.0-blue" alt="License">
 </p>
 
@@ -51,6 +51,7 @@
 ### 📚 核心学习功能
 - **单词学习** - 卡片翻转式学习体验，支持音标、释义、例句展示
 - **智能复习** - 基于 SM-2 艾宾浩斯记忆曲线的间隔重复算法
+- **快速复习** - 针对快速学习需求，支持复习所有学过的单词（不按记忆算法）
 - **单词测验** - 选择题、拼写题两种测验模式
 - **学习统计** - 可视化学习进度、正确率、学习曲线
 - **词库管理** - 内置多套词库 + 支持 JSON 导入/导出自定义词库
