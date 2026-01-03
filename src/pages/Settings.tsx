@@ -428,7 +428,6 @@ export default function Settings() {
                   <div className="space-y-1">
                     <ShortcutItem
                       label="显示答案 / 返回当前学习"
-                      shortcutKey="showAnswer"
                       currentValue={settings.shortcuts?.showAnswer || defaultShortcuts.showAnswer}
                       isEditing={editingShortcut === 'showAnswer'}
                       onEdit={() => setEditingShortcut('showAnswer')}
@@ -436,7 +435,6 @@ export default function Settings() {
                     />
                     <ShortcutItem
                       label="认识 / 下一个"
-                      shortcutKey="markKnown"
                       currentValue={settings.shortcuts?.markKnown || defaultShortcuts.markKnown}
                       isEditing={editingShortcut === 'markKnown'}
                       onEdit={() => setEditingShortcut('markKnown')}
@@ -444,7 +442,6 @@ export default function Settings() {
                     />
                     <ShortcutItem
                       label="不认识 / 上一个"
-                      shortcutKey="markUnknown"
                       currentValue={settings.shortcuts?.markUnknown || defaultShortcuts.markUnknown}
                       isEditing={editingShortcut === 'markUnknown'}
                       onEdit={() => setEditingShortcut('markUnknown')}
@@ -452,7 +449,6 @@ export default function Settings() {
                     />
                     <ShortcutItem
                       label="播放发音"
-                      shortcutKey="playAudio"
                       currentValue={settings.shortcuts?.playAudio || defaultShortcuts.playAudio}
                       isEditing={editingShortcut === 'playAudio'}
                       onEdit={() => setEditingShortcut('playAudio')}
@@ -460,7 +456,6 @@ export default function Settings() {
                     />
                     <ShortcutItem
                       label="AI 智能分析"
-                      shortcutKey="showAIAnalysis"
                       currentValue={settings.shortcuts?.showAIAnalysis || defaultShortcuts.showAIAnalysis}
                       isEditing={editingShortcut === 'showAIAnalysis'}
                       onEdit={() => setEditingShortcut('showAIAnalysis')}
@@ -475,7 +470,6 @@ export default function Settings() {
                   <div className="space-y-1">
                     <ShortcutItem
                       label="太简单"
-                      shortcutKey="rateEasy"
                       currentValue={settings.shortcuts?.rateEasy || defaultShortcuts.rateEasy}
                       isEditing={editingShortcut === 'rateEasy'}
                       onEdit={() => setEditingShortcut('rateEasy')}
@@ -483,7 +477,6 @@ export default function Settings() {
                     />
                     <ShortcutItem
                       label="记住了"
-                      shortcutKey="rateGood"
                       currentValue={settings.shortcuts?.rateGood || defaultShortcuts.rateGood}
                       isEditing={editingShortcut === 'rateGood'}
                       onEdit={() => setEditingShortcut('rateGood')}
@@ -491,7 +484,6 @@ export default function Settings() {
                     />
                     <ShortcutItem
                       label="有点难"
-                      shortcutKey="rateHard"
                       currentValue={settings.shortcuts?.rateHard || defaultShortcuts.rateHard}
                       isEditing={editingShortcut === 'rateHard'}
                       onEdit={() => setEditingShortcut('rateHard')}
@@ -499,7 +491,6 @@ export default function Settings() {
                     />
                     <ShortcutItem
                       label="忘记了"
-                      shortcutKey="rateAgain"
                       currentValue={settings.shortcuts?.rateAgain || defaultShortcuts.rateAgain}
                       isEditing={editingShortcut === 'rateAgain'}
                       onEdit={() => setEditingShortcut('rateAgain')}
@@ -722,7 +713,6 @@ export default function Settings() {
 // 快捷键设置项组件
 interface ShortcutItemProps {
   label: string
-  shortcutKey: string
   currentValue: string
   isEditing: boolean
   onEdit: () => void
@@ -730,7 +720,7 @@ interface ShortcutItemProps {
   hasConflict?: boolean
 }
 
-function ShortcutItem({ label, shortcutKey, currentValue, isEditing, onEdit, onCancel, hasConflict }: ShortcutItemProps) {
+function ShortcutItem({ label, currentValue, isEditing, onEdit, onCancel, hasConflict }: ShortcutItemProps) {
   return (
     <div className={`flex items-center justify-between py-2 px-3 rounded-lg ${hasConflict ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
       <div className="flex-1">

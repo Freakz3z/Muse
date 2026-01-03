@@ -893,7 +893,7 @@ export default function Learn() {
                   // 按学习顺序排序（index）
                   allLearnedEntries.sort((a, b) => a[1].index - b[1].index)
 
-                  return allLearnedEntries.map(([wordId, { known, index }]) => {
+                  return allLearnedEntries.map(([wordId, { known }]) => {
                     // 先从当前words数组中查找
                     let word = words.find(w => w.id === wordId)
                     // 如果找不到，从todayLearnedWords中查找
