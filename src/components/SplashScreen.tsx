@@ -172,7 +172,7 @@ export default function SplashScreen() {
 
           {/* Logo 主体 */}
           <img
-            src="/Muse.png"
+            src="./Muse.png"
             alt="Muse Logo"
             className="relative w-36 h-36 object-contain rounded-3xl"
           />

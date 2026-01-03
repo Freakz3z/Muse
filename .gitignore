@@ -5,4 +5,4 @@ release/
 *.log
 .DS_Store
 .claude
-.electron-cache/
+.electron-cache
