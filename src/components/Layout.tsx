@@ -13,6 +13,7 @@ import {
   Search,
   Info
 } from 'lucide-react'
+import logo from '/Muse.png'
 
 const navItems = [
   { path: '/', icon: Home, label: '首页' },
@@ -38,9 +39,9 @@ export default function Layout() {
       {/* 标题栏 */}
       <header className="h-10 bg-white/80 backdrop-blur-sm border-b border-gray-200 flex items-center justify-between px-4 drag-region">
         <div className="flex items-center gap-2 no-drag">
-          <img 
-            src="Muse.png" 
-            alt="Muse" 
+          <img
+            src={logo}
+            alt="Muse"
             className="w-6 h-6 rounded-lg shadow-sm"
           />
           <span className="text-sm font-semibold text-gray-700">Muse</span>

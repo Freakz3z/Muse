@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import logo from '/Muse.png'
 
 export default function About() {
   return (
@@ -13,7 +14,7 @@ export default function About() {
           {/* Logo */}
           <div className="flex-shrink-0">
             <img
-              src="Muse.png"
+              src={logo}
               alt="Muse Logo"
               className="w-32 h-32 rounded-2xl shadow-lg"
             />

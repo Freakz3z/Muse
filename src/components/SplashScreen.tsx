@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
+import logo from '/Muse.png';
 
 export default function SplashScreen() {
   const [loadingText, setLoadingText] = useState('正在初始化 AI 引擎...');
@@ -172,7 +173,7 @@ export default function SplashScreen() {
 
           {/* Logo 主体 */}
           <img
-            src="./Muse.png"
+            src={logo}
             alt="Muse Logo"
             className="relative w-36 h-36 object-contain rounded-3xl"
           />
