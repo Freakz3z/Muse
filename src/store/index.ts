@@ -97,6 +97,7 @@ const getDefaultSettings = (): UserSettings => ({
   studyMode: 'card_flip' as any,
   shortcuts: defaultShortcuts,
   quickReviewLimit: 30,
+  enableAIAnalysis: true,
 });
 
 const getTodayDateString = () => {

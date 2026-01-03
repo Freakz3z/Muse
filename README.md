@@ -79,8 +79,6 @@
 | **Ollama** | Llama3, Mistral 等开源模型 | ❌ 否（本地运行） |
 | **自定义** | 任何 OpenAI 兼容 API | 视情况而定 |
 
-词汇详情通过 Free Dictionary API 动态加载，包含音标、释义、例句等。
-
 ## 🚀 快速开始
 
 ### 环境要求

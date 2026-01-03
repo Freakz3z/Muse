@@ -125,6 +125,7 @@ export const settingsStorage = {
       studyMode: 'card_flip' as any,
       shortcuts: defaultShortcuts,
       quickReviewLimit: 30,
+      enableAIAnalysis: true,
     };
   },
 

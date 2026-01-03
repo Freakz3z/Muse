@@ -49,6 +49,7 @@ export default function SearchPage() {
   const [error, setError] = useState<string | null>(null)
   const [selectedBook, setSelectedBook] = useState<string>('')
   const [addSuccess, setAddSuccess] = useState(false)
+  const [duplicateWordError, setDuplicateWordError] = useState<string | null>(null)
   const [searchHistory, setSearchHistory] = useState<string[]>(getSearchHistory())
 
   // 获取自定义词库
@@ -107,6 +108,7 @@ export default function SearchPage() {
     setSearchQuery(queryWord)
     setIsSearching(true)
     setError(null)
+    setDuplicateWordError(null)
     setSearchResult(null)
     setAiExplanation(null)
     setAddSuccess(false)
@@ -198,7 +200,8 @@ export default function SearchPage() {
         const wordExists = bookWords.some(w => w.word.toLowerCase() === searchResult.word.toLowerCase())
 
         if (wordExists) {
-          setError(`"${searchResult.word}" 已存在于词库 "${book.name}" 中`)
+          setDuplicateWordError(`"${searchResult.word}" 已存在于词库 "${book.name}" 中`)
+          setTimeout(() => setDuplicateWordError(null), 3000)
           return
         }
       }
@@ -209,6 +212,9 @@ export default function SearchPage() {
 
       // 添加到选中的词库
       await addWordToBook(selectedBook, searchResult.id)
+
+      // 清除成功状态以便下次添加
+      setSelectedBook('')
 
       setAddSuccess(true)
       setTimeout(() => {
@@ -316,11 +322,31 @@ export default function SearchPage() {
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
           className="flex items-center gap-3 p-4 bg-red-50 text-red-600 rounded-xl mb-6"
         >
           <AlertCircle className="w-5 h-5" />
           {error}
           <button onClick={() => setError(null)} className="ml-auto">
+            <X className="w-4 h-4" />
+          </button>
+        </motion.div>
+      )}
+
+      {/* 重复单词警告 */}
+      {duplicateWordError && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          className="flex items-center gap-3 p-4 bg-amber-50 text-amber-700 rounded-xl mb-6 border border-amber-200"
+        >
+          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="font-medium">单词已存在</p>
+            <p className="text-sm text-amber-600 mt-0.5">{duplicateWordError}</p>
+          </div>
+          <button onClick={() => setDuplicateWordError(null)} className="ml-auto text-amber-500 hover:text-amber-700">
             <X className="w-4 h-4" />
           </button>
         </motion.div>

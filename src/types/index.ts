@@ -71,6 +71,7 @@ export interface UserSettings {
   studyMode: StudyMode;        // 学习模式
   shortcuts: ShortcutSettings; // 快捷键设置
   quickReviewLimit: number;    // 快速复习单词数量
+  enableAIAnalysis: boolean;   // 启用AI自动分析
 }
 
 // 快捷键设置
