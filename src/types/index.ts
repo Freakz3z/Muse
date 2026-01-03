@@ -78,8 +78,6 @@ export interface UserSettings {
 export interface ShortcutSettings {
   // 学习/复习界面
   showAnswer: string;      // 显示答案
-  prevWord: string;        // 上一个单词
-  nextWord: string;        // 下一个单词
   markKnown: string;       // 标记认识
   markUnknown: string;     // 标记不认识
   playAudio: string;       // 播放发音
@@ -96,8 +94,6 @@ export interface ShortcutSettings {
 // 默认快捷键
 export const defaultShortcuts: ShortcutSettings = {
   showAnswer: 'Space',
-  prevWord: 'KeyQ',
-  nextWord: 'KeyE',
   markKnown: 'KeyD',
   markUnknown: 'KeyA',
   playAudio: 'KeyR',

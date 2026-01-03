@@ -40,6 +40,7 @@ declare global {
       close: () => void
       getWindowState: () => Promise<{ isMaximized: boolean }>
       onMaximizeChange: (callback: (isMaximized: boolean) => void) => void
+      openExternal: (url: string) => void
     }
   }
 }

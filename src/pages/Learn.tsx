@@ -1,9 +1,7 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Volume2,
-  ChevronLeft,
-  ChevronRight,
   Check,
   X,
   BookOpen,
@@ -14,7 +12,10 @@ import {
   Copy,
   Loader2,
   Settings as SettingsIcon,
-  RotateCcw
+  RotateCcw,
+  ChevronLeft,
+  ChevronRight,
+  List
 } from 'lucide-react'
 import { useAppStore } from '../store'
 import { Word } from '../types'
@@ -31,6 +32,36 @@ import { Link } from 'react-router-dom'
 const getAIConfig = (): AIConfig => {
   const savedConfig = localStorage.getItem('ai_config')
   return savedConfig ? JSON.parse(savedConfig) : defaultAIConfig
+}
+
+// 获取今天的日期字符串
+const getTodayString = (): string => {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+}
+
+// 今天学习记录的localStorage key
+const getTodayLearnedKey = (): string => `learned_words_${getTodayString()}`
+
+// 加载今天的学习记录
+const loadTodayLearnedWords = (): Map<string, { known: boolean; index: number }> => {
+  const key = getTodayLearnedKey()
+  const saved = localStorage.getItem(key)
+  if (!saved) return new Map()
+
+  try {
+    const data = JSON.parse(saved)
+    return new Map(Object.entries(data))
+  } catch {
+    return new Map()
+  }
+}
+
+// 保存今天的学习记录
+const saveTodayLearnedWords = (learnedWords: Map<string, { known: boolean; index: number }>) => {
+  const key = getTodayLearnedKey()
+  const data = Object.fromEntries(learnedWords.entries())
+  localStorage.setItem(key, JSON.stringify(data))
 }
 
 export default function Learn() {
@@ -54,6 +85,17 @@ export default function Learn() {
   const [startTime, setStartTime] = useState<number>(0)
   const [sessionStartTime, setSessionStartTime] = useState<number>(0)
   const [correctCount, setCorrectCount] = useState(0)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const isProcessingRef = useRef(false)
+  // 已学单词状态：Map<wordId, { known: boolean | null, index: number }>
+  // known: true=认识, false=不认识, null=未学习
+  const [learnedWords, setLearnedWords] = useState<Map<string, { known: boolean | null; index: number }>>(new Map())
+  // 今天的所有学过的单词（包括之前的学习会话）
+  const [todayLearnedWords, setTodayLearnedWords] = useState<Word[]>([])
+  // 侧边栏展开状态
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  // 查看历史单词的索引
+  const [viewingIndex, setViewingIndex] = useState<number | null>(null)
 
   // AI内容状态
   const [aiExamples, setAiExamples] = useState<GeneratedExample[]>([])
@@ -76,6 +118,27 @@ export default function Learn() {
     setShowAnswer(false)
     setSessionComplete(false)
     setCorrectCount(0)
+
+    // 加载今天的学习记录（包括之前学习会话的记录）
+    const todayLearned = loadTodayLearnedWords()
+
+    // 初始化当前会话的单词为未学习状态
+    const initialLearnedWords = new Map<string, { known: boolean | null; index: number }>()
+    newWords.forEach((word, index) => {
+      // 如果今天已经学过这个单词，使用之前的状态
+      if (todayLearned.has(word.id)) {
+        initialLearnedWords.set(word.id, todayLearned.get(word.id)!)
+      } else {
+        initialLearnedWords.set(word.id, { known: null, index })
+      }
+    })
+    setLearnedWords(initialLearnedWords)
+
+    // 加载今天所有学过的单词（用于侧边栏显示）
+    await loadTodayWordsForSidebar()
+
+    setViewingIndex(null)
+    setSidebarOpen(false)
     setSessionStartTime(Date.now())
     if (newWords.length > 0 && currentBook) {
       startSession('learn', currentBook.id)
@@ -83,18 +146,43 @@ export default function Learn() {
     setIsLoading(false)
   }
 
+  // 加载今天所有学过的单词用于侧边栏显示
+  const loadTodayWordsForSidebar = async () => {
+    const { words: allWords } = useAppStore.getState()
+    const todayLearned = loadTodayLearnedWords()
+
+    // 筛选出今天学过的单词
+    const learnedWordIds = new Set(todayLearned.keys())
+    const learnedWords = allWords.filter(w => learnedWordIds.has(w.id))
+
+    setTodayLearnedWords(learnedWords)
+  }
+
+  // 判断当前是否在查看历史单词
+  const isViewingHistory = viewingIndex !== null
+  const displayWord = isViewingHistory ? words[viewingIndex] : currentWord
+  const displayIndex = isViewingHistory ? viewingIndex : currentIndex
+
+  // 当切换查看历史单词时，确保显示答案
+  useEffect(() => {
+    if (isViewingHistory && !showAnswer) {
+      setShowAnswer(true)
+    }
+  }, [isViewingHistory])
+
   const playAudio = useCallback(() => {
-    if (!currentWord) return
+    if (!displayWord) return
     // 取消当前正在播放的音频，防止重复播放
     speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(currentWord.word)
+    const utterance = new SpeechSynthesisUtterance(displayWord.word)
     utterance.lang = settings.pronunciation === 'us' ? 'en-US' : 'en-GB'
     utterance.rate = 0.9
     speechSynthesis.speak(utterance)
-  }, [currentWord, settings.pronunciation])
+  }, [displayWord, settings.pronunciation])
 
   useEffect(() => {
-    if (currentWord && settings.autoPlay) {
+    // 只在当前学习单词变化时自动播放，查看历史时不播放
+    if (currentWord && settings.autoPlay && !isViewingHistory) {
       playAudio()
     }
     setStartTime(Date.now())
@@ -103,7 +191,7 @@ export default function Learn() {
     setAiExplanation(null)
     setAiMemoryTip('')
     setShowAIAnalysis(false)
-  }, [currentIndex, currentWord])
+  }, [currentIndex, currentWord, isViewingHistory])
 
   // 检查单词数据是否完整
   const isWordDataIncomplete = useCallback((word: Word): boolean => {
@@ -122,7 +210,7 @@ export default function Learn() {
 
   // 手动加载AI内容
   const loadAIContent = useCallback(async () => {
-    if (!currentWord) return
+    if (!displayWord) return
 
     const aiConfig = getAIConfig()
     if (!aiConfig.enabled) {
@@ -134,20 +222,20 @@ export default function Learn() {
     setShowAIAnalysis(true)
     try {
       // 如果单词数据不完整，先用AI补充
-      if (isWordDataIncomplete(currentWord)) {
-        const enrichedWord = await dictionaryService.enrichWord(currentWord)
-        if (enrichedWord !== currentWord) {
+      if (isWordDataIncomplete(displayWord)) {
+        const enrichedWord = await dictionaryService.enrichWord(displayWord)
+        if (enrichedWord !== displayWord) {
           // 更新当前单词数据
           setWords(prevWords => prevWords.map((w, i) =>
-            i === currentIndex ? enrichedWord : w
+            i === displayIndex ? enrichedWord : w
           ))
         }
       }
 
       // 并行加载AI内容（例句和词义解释）
       const [examples, explanation] = await Promise.all([
-        aiService.generateExamplesWithTranslation(currentWord.word).catch(() => []),
-        aiService.explainWordMeaning(currentWord.word).catch(() => null)
+        aiService.generateExamplesWithTranslation(displayWord.word).catch(() => []),
+        aiService.explainWordMeaning(displayWord.word).catch(() => null)
       ])
 
       setAiExamples(examples || [])
@@ -163,7 +251,7 @@ export default function Learn() {
     } finally {
       setIsLoadingAI(false)
     }
-  }, [currentWord, currentIndex, isWordDataIncomplete])
+  }, [displayWord, displayIndex, isWordDataIncomplete])
 
   // 快捷键处理显示AI分析
   const handleShortcutAIAnalysis = useCallback(() => {
@@ -173,34 +261,76 @@ export default function Learn() {
   }, [showAnswer, isLoadingAI, showAIAnalysis, loadAIContent])
 
   const handleKnow = async () => {
-    if (!currentWord) return
-    
-    const responseTime = Date.now() - startTime
-    const quality = getQualityFromResponse(responseTime, true)
-    
-    await updateRecord(currentWord.id, true, quality)
-    recordWordResult(currentWord.id, true)
-    setCorrectCount(c => c + 1)
-    
-    await updateTodayStats({
-      newWords: todayStats.newWords + 1,
-    })
-    
-    goToNext()
+    if (!currentWord || isProcessingRef.current) return
+
+    isProcessingRef.current = true
+    setIsProcessing(true)
+
+    try {
+      const responseTime = Date.now() - startTime
+      const quality = getQualityFromResponse(responseTime, true)
+
+      await updateRecord(currentWord.id, true, quality)
+      recordWordResult(currentWord.id, true)
+      setCorrectCount(c => c + 1)
+
+      // 记录为已学单词（认识）
+      setLearnedWords(prev => {
+        const newMap = new Map(prev)
+        newMap.set(currentWord.id, { known: true, index: currentIndex })
+
+        // 保存到今天的学习记录
+        const todayLearned = loadTodayLearnedWords()
+        todayLearned.set(currentWord.id, { known: true, index: currentIndex })
+        saveTodayLearnedWords(todayLearned)
+
+        return newMap
+      })
+
+      await updateTodayStats({
+        newWords: todayStats.newWords + 1,
+      })
+
+      goToNext()
+    } finally {
+      isProcessingRef.current = false
+      setIsProcessing(false)
+    }
   }
 
   const handleDontKnow = async () => {
-    if (!currentWord) return
-    
-    const quality = getQualityFromResponse(0, false)
-    await updateRecord(currentWord.id, false, quality)
-    recordWordResult(currentWord.id, false)
-    
-    await updateTodayStats({
-      newWords: todayStats.newWords + 1,
-    })
-    
-    goToNext()
+    if (!currentWord || isProcessingRef.current) return
+
+    isProcessingRef.current = true
+    setIsProcessing(true)
+
+    try {
+      const quality = getQualityFromResponse(0, false)
+      await updateRecord(currentWord.id, false, quality)
+      recordWordResult(currentWord.id, false)
+
+      // 记录为已学单词（不认识）
+      setLearnedWords(prev => {
+        const newMap = new Map(prev)
+        newMap.set(currentWord.id, { known: false, index: currentIndex })
+
+        // 保存到今天的学习记录
+        const todayLearned = loadTodayLearnedWords()
+        todayLearned.set(currentWord.id, { known: false, index: currentIndex })
+        saveTodayLearnedWords(todayLearned)
+
+        return newMap
+      })
+
+      await updateTodayStats({
+        newWords: todayStats.newWords + 1,
+      })
+
+      goToNext()
+    } finally {
+      isProcessingRef.current = false
+      setIsProcessing(false)
+    }
   }
 
   const goToNext = () => {
@@ -218,50 +348,89 @@ export default function Learn() {
     }
   }
 
+  // 查看历史单词 - 支持查看任意已学单词
+  const viewLearnedWord = useCallback((wordId: string) => {
+    // 先检查是否在当前会话的单词列表中
+    const indexInSession = words.findIndex(w => w.id === wordId)
+    if (indexInSession !== -1) {
+      // 在当前会话中,使用索引查看
+      setViewingIndex(indexInSession)
+    } else {
+      // 不在当前会话中,需要临时添加到显示列表
+      const word = todayLearnedWords.find(w => w.id === wordId)
+      if (word) {
+        // 将单词临时添加到当前words数组末尾用于显示
+        setWords(prev => [...prev, word])
+        // 设置查看索引为新增单词的索引
+        setViewingIndex(words.length)
+      }
+    }
+    setSidebarOpen(false)
+  }, [words, todayLearnedWords])
+
+  // 历史记录导航：上一个
+  const goToPrevious = useCallback(() => {
+    if (viewingIndex === null) return
+    const newIndex = viewingIndex - 1
+    if (newIndex >= 0) {
+      setViewingIndex(newIndex)
+    }
+  }, [viewingIndex])
+
+  // 历史记录导航：下一个
+  const goToNextHistory = useCallback(() => {
+    if (viewingIndex === null) return
+    const newIndex = viewingIndex + 1
+    // 如果下一个是未学习单词，返回当前学习
+    if (newIndex >= words.length) {
+      setViewingIndex(null)
+      return
+    }
+    const nextWord = words[newIndex]
+    const nextWordStatus = learnedWords.get(nextWord.id)
+    if (nextWordStatus?.known === null) {
+      // 未学习，返回当前学习
+      setViewingIndex(null)
+    } else {
+      setViewingIndex(newIndex)
+    }
+  }, [viewingIndex, words.length, learnedWords])
+
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
   }
 
-  const goToPrevious = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex(i => i - 1)
-      setShowAnswer(false)
+  // 切换显示答案 / 返回当前学习
+  const toggleAnswerOrReturn = useCallback(() => {
+    if (isViewingHistory) {
+      setViewingIndex(null)
+    } else {
+      setShowAnswer(prev => !prev)
     }
-  }
-  
-  // 切换显示答案
-  const toggleAnswer = useCallback(() => {
-    setShowAnswer(prev => !prev)
-  }, [])
-  
+  }, [isViewingHistory])
+
   // 快捷键处理函数 - 使用 useCallback 确保引用稳定
+  // 查看历史时：markKnown=下一个, markUnknown=上一个
+  // 正常学习时：markKnown=认识, markUnknown=不认识
   const handleShortcutKnow = useCallback(() => {
-    if (showAnswer && currentWord) {
+    if (isViewingHistory) {
+      goToNextHistory()
+    } else if (showAnswer && currentWord) {
       handleKnow()
     }
-  }, [showAnswer, currentWord])
-  
+  }, [isViewingHistory, goToNextHistory, showAnswer, currentWord])
+
   const handleShortcutUnknown = useCallback(() => {
-    if (showAnswer && currentWord) {
+    if (isViewingHistory) {
+      goToPrevious()
+    } else if (showAnswer && currentWord) {
       handleDontKnow()
     }
-  }, [showAnswer, currentWord])
-  
-  const handleShortcutNext = useCallback(() => {
-    if (showAnswer) {
-      goToNext()
-    }
-  }, [showAnswer, currentIndex, words.length])
-  
-  const handleShortcutPrev = useCallback(() => {
-    goToPrevious()
-  }, [currentIndex])
-  
+  }, [isViewingHistory, goToPrevious, showAnswer, currentWord])
+
   // 使用快捷键
   useShortcuts({
-    showAnswer: toggleAnswer,
-    prevWord: handleShortcutPrev,
-    nextWord: handleShortcutNext,
+    showAnswer: toggleAnswerOrReturn,
     markKnown: handleShortcutKnow,
     markUnknown: handleShortcutUnknown,
     playAudio,
@@ -386,59 +555,96 @@ export default function Learn() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto">
-      {/* 进度条 */}
-      <div className="mb-6">
-        <ProgressBar current={currentIndex + 1} total={words.length} color="blue" />
-      </div>
-
-      {/* 单词卡片 */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={currentIndex}
-          initial={{ opacity: 0, x: 50 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -50 }}
-          className="bg-white rounded-2xl shadow-lg overflow-hidden"
-        >
-          {/* 单词展示 */}
-          <div className="p-8 text-center border-b">
-            <h1 className="text-5xl font-bold text-gray-800 mb-4">{currentWord.word}</h1>
-            <div className="flex items-center justify-center gap-4">
-              <span className="text-gray-500 text-lg">{currentWord.phonetic.us}</span>
-              <button
-                onClick={playAudio}
-                className="p-2 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-500 transition-colors"
-              >
-                <Volume2 className="w-5 h-5" />
-              </button>
-            </div>
+    <div className="flex h-full">
+      {/* 主内容区 */}
+      <div className="flex-1 max-w-3xl mx-auto overflow-y-auto">
+        {/* 顶部栏：进度条和侧边栏触发按钮 */}
+        <div className="flex items-center gap-4 mb-6">
+          <div className="flex-1">
+            <ProgressBar current={displayIndex + 1} total={words.length} color="blue" />
           </div>
-
-          {/* 释义区域 */}
-          <AnimatePresence>
-            {showAnswer ? (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                className="border-b overflow-hidden"
+          {/* 已学单词列表按钮 */}
+          {(() => {
+            const todayLearned = loadTodayLearnedWords()
+            const todayCount = todayLearned.size
+            return todayCount > 0 ? (
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl shadow-sm border border-gray-200 hover:border-gray-300 hover:shadow transition-all text-sm"
+                title="今日已学单词列表"
               >
-                <div className="p-6 space-y-6">
-                  {/* 基础释义 */}
-                  <div className="space-y-4">
-                    {currentWord.meanings.map((meaning, index) => (
-                      <div key={index} className="flex items-start gap-3">
-                        <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
-                          {meaning.partOfSpeech}
-                        </span>
-                        <div>
-                          <p className="text-gray-600 text-sm">{meaning.definition}</p>
-                          <p className="text-gray-800 font-medium">{meaning.translation}</p>
+                <List className="w-4 h-4" />
+                <span className="font-medium">{todayCount}</span>
+              </button>
+            ) : null
+          })()}
+        </div>
+
+        {/* 返回当前学习按钮 */}
+        {isViewingHistory && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4"
+          >
+            <button
+              onClick={() => setViewingIndex(null)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors text-sm font-medium"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              <span>返回当前学习</span>
+              <span className="text-xs opacity-60">{getShortcutDisplay(settings.shortcuts?.showAnswer || 'Space')}</span>
+            </button>
+          </motion.div>
+        )}
+
+        {/* 单词卡片 */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={displayIndex}
+            initial={{ opacity: 0, x: 50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -50 }}
+            className="bg-white rounded-2xl shadow-lg overflow-hidden"
+          >
+            {/* 单词展示 */}
+            <div className="p-8 text-center border-b">
+              <h1 className="text-5xl font-bold text-gray-800 mb-4">{displayWord.word}</h1>
+              <div className="flex items-center justify-center gap-4">
+                <span className="text-gray-500 text-lg">{displayWord.phonetic.us}</span>
+                <button
+                  onClick={playAudio}
+                  className="p-2 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-500 transition-colors"
+                >
+                  <Volume2 className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* 释义区域 - 查看历史时始终显示 */}
+            <AnimatePresence>
+              {showAnswer || isViewingHistory ? (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="border-b overflow-hidden"
+                >
+                  <div className="p-6 space-y-6">
+                    {/* 基础释义 */}
+                    <div className="space-y-4">
+                      {displayWord.meanings.map((meaning, index) => (
+                        <div key={index} className="flex items-start gap-3">
+                          <span className="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
+                            {meaning.partOfSpeech}
+                          </span>
+                          <div>
+                            <p className="text-gray-600 text-sm">{meaning.definition}</p>
+                            <p className="text-gray-800 font-medium">{meaning.translation}</p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
 
                   {/* AI词义解释 */}
                   {isLoadingAI && !aiExplanation && (
@@ -544,11 +750,56 @@ export default function Learn() {
 
           {/* 操作按钮 */}
           <div className="p-6 flex items-center justify-center gap-4">
-            {showAnswer ? (
+            {isViewingHistory ? (
+              // 查看历史模式：显示导航按钮
+              <>
+                <button
+                  onClick={goToPrevious}
+                  className="flex-1 max-w-40 py-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-medium transition-colors flex flex-col items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={viewingIndex === 0}
+                >
+                  <span className="flex items-center gap-2">
+                    <ChevronRight className="w-5 h-5 rotate-180" />
+                    上一个
+                  </span>
+                  <span className="text-xs opacity-60">{getShortcutDisplay(settings.shortcuts?.markUnknown || 'KeyA')}</span>
+                </button>
+                {!showAIAnalysis && !isLoadingAI && (
+                  <button
+                    onClick={loadAIContent}
+                    className="flex-1 max-w-40 py-4 bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 text-purple-700 rounded-xl font-medium transition-colors flex flex-col items-center gap-1 border-2 border-dashed border-purple-200 hover:border-purple-300"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Sparkles className="w-5 h-5" />
+                      AI分析
+                    </span>
+                    <span className="text-xs opacity-60">{getShortcutDisplay(settings.shortcuts?.showAIAnalysis || 'KeyW')}</span>
+                  </button>
+                )}
+                {isLoadingAI && (
+                  <div className="flex-1 max-w-40 py-4 bg-purple-50 rounded-xl font-medium flex flex-col items-center gap-1">
+                    <Loader2 className="w-5 h-5 animate-spin text-purple-500" />
+                    <span className="text-sm text-purple-600">分析中...</span>
+                  </div>
+                )}
+                <button
+                  onClick={goToNextHistory}
+                  className="flex-1 max-w-40 py-4 bg-green-50 hover:bg-green-100 text-green-600 rounded-xl font-medium transition-colors flex flex-col items-center gap-1"
+                >
+                  <span className="flex items-center gap-2">
+                    下一个
+                    <ChevronRight className="w-5 h-5" />
+                  </span>
+                  <span className="text-xs opacity-60">{getShortcutDisplay(settings.shortcuts?.markKnown || 'KeyD')}</span>
+                </button>
+              </>
+            ) : showAnswer ? (
+              // 正常学习模式：显示答案已展开
               <>
                 <button
                   onClick={handleDontKnow}
-                  className="flex-1 max-w-40 py-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-medium transition-colors flex flex-col items-center gap-1"
+                  disabled={isProcessing}
+                  className="flex-1 max-w-40 py-4 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-medium transition-colors flex flex-col items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span className="flex items-center gap-2">
                     <X className="w-5 h-5" />
@@ -576,7 +827,8 @@ export default function Learn() {
                 )}
                 <button
                   onClick={handleKnow}
-                  className="flex-1 max-w-40 py-4 bg-green-50 hover:bg-green-100 text-green-600 rounded-xl font-medium transition-colors flex flex-col items-center gap-1"
+                  disabled={isProcessing}
+                  className="flex-1 max-w-40 py-4 bg-green-50 hover:bg-green-100 text-green-600 rounded-xl font-medium transition-colors flex flex-col items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span className="flex items-center gap-2">
                     <Check className="w-5 h-5" />
@@ -586,6 +838,7 @@ export default function Learn() {
                 </button>
               </>
             ) : (
+              // 正常学习模式：显示答案未展开
               <button
                 onClick={() => setShowAnswer(true)}
                 className="px-8 py-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl font-medium hover:shadow-lg transition-shadow flex flex-col items-center gap-1"
@@ -597,31 +850,112 @@ export default function Learn() {
           </div>
         </motion.div>
       </AnimatePresence>
-
-      {/* 导航按钮 */}
-      <div className="flex items-center justify-between mt-6">
-        <button
-          onClick={goToPrevious}
-          disabled={currentIndex === 0}
-          className="flex items-center gap-2 px-4 py-2 text-gray-500 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
-        >
-          <ChevronLeft className="w-5 h-5" />
-          <span>上一个</span>
-          <span className="text-xs text-gray-400">({getShortcutDisplay(settings.shortcuts?.prevWord || 'KeyQ')})</span>
-        </button>
-        <span className="text-gray-400">
-          {currentIndex + 1} / {words.length}
-        </span>
-        <button
-          onClick={goToNext}
-          disabled={currentIndex === words.length - 1}
-          className="flex items-center gap-2 px-4 py-2 text-gray-500 hover:text-gray-700 disabled:opacity-30 disabled:cursor-not-allowed"
-        >
-          <span className="text-xs text-gray-400">({getShortcutDisplay(settings.shortcuts?.nextWord || 'KeyE')})</span>
-          <span>下一个</span>
-          <ChevronRight className="w-5 h-5" />
-        </button>
       </div>
+
+      {/* 侧边栏：已学单词列表 */}
+      <AnimatePresence>
+        {sidebarOpen && (
+          <>
+            {/* 遮罩层 */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSidebarOpen(false)}
+              className="fixed inset-0 bg-black/20 z-40"
+            />
+            {/* 侧边栏 */}
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed right-0 top-0 h-full w-80 bg-white shadow-2xl z-50 overflow-hidden flex flex-col"
+            >
+              {/* 侧边栏头部 */}
+              <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+                <h3 className="font-bold text-gray-800">已学单词</h3>
+                <button
+                  onClick={() => setSidebarOpen(false)}
+                  className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <ChevronRight className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              {/* 单词列表 */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+                {(() => {
+                  // 合并今天所有学过的单词
+                  const todayLearned = loadTodayLearnedWords()
+                  const allLearnedEntries = Array.from(todayLearned.entries())
+
+                  // 按学习顺序排序（index）
+                  allLearnedEntries.sort((a, b) => a[1].index - b[1].index)
+
+                  return allLearnedEntries.map(([wordId, { known, index }]) => {
+                    // 先从当前words数组中查找
+                    let word = words.find(w => w.id === wordId)
+                    // 如果找不到，从todayLearnedWords中查找
+                    if (!word) {
+                      word = todayLearnedWords.find(w => w.id === wordId)
+                    }
+                    if (!word) return null
+
+                    const meanings = word.meanings.map(m => m.translation).filter(Boolean).join('; ')
+                    const partOfSpeech = word.meanings[0]?.partOfSpeech || ''
+
+                    // 判断这个单词是否在当前学习列表中
+                    const isInCurrentSession = words.some(w => w.id === wordId)
+
+                    return (
+                      <motion.button
+                        key={wordId}
+                        onClick={() => viewLearnedWord(wordId)}
+                        className="w-full p-3 rounded-xl text-left transition-colors group bg-gray-50 hover:bg-blue-50 cursor-pointer"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-medium text-gray-800 truncate">{word.word}</span>
+                              <span className={`text-xs px-1.5 py-0.5 rounded ${
+                                known === true
+                                  ? 'bg-green-100 text-green-600'
+                                  : 'bg-orange-100 text-orange-600'
+                              }`}>
+                                {known === true ? '认识' : '不认识'}
+                              </span>
+                              {!isInCurrentSession && (
+                                <span className="text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-600">
+                                  之前学习
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500 mb-1">{partOfSpeech}</div>
+                            {meanings && (
+                              <div className="text-sm text-gray-600 line-clamp-2">{meanings}</div>
+                            )}
+                          </div>
+                        </div>
+                      </motion.button>
+                    )
+                  })
+                })()}
+              </div>
+
+              {/* 侧边栏底部 */}
+              <div className="p-4 border-t border-gray-100 bg-gray-50">
+                <div className="text-xs text-gray-500 text-center">
+                  {(() => {
+                    const todayLearned = loadTodayLearnedWords()
+                    return `今日共学习 ${todayLearned.size} 个单词`
+                  })()}
+                </div>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

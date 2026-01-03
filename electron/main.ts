@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage } from 'electron'
+import { app, BrowserWindow, ipcMain, globalShortcut, Tray, Menu, nativeImage, shell } from 'electron'
 import path from 'path'
 
 let mainWindow: BrowserWindow | null = null
@@ -107,6 +107,11 @@ ipcMain.on('window-close', () => mainWindow?.hide())
 ipcMain.handle('get-window-state', () => ({
   isMaximized: mainWindow?.isMaximized() ?? false,
 }))
+
+// 在默认浏览器中打开外部链接
+ipcMain.on('open-external', (_, url: string) => {
+  shell.openExternal(url)
+})
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {

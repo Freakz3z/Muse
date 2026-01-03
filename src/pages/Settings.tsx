@@ -37,6 +37,20 @@ export default function Settings() {
   
   // 快捷键编辑状态
   const [editingShortcut, setEditingShortcut] = useState<keyof ShortcutSettings | null>(null)
+  const [shortcutConflict, setShortcutConflict] = useState<string | null>(null)
+
+  // 快捷键功能标签映射
+  const shortcutLabels: Record<string, string> = {
+    showAnswer: '显示答案 / 返回当前学习',
+    markKnown: '认识 / 下一个',
+    markUnknown: '不认识 / 上一个',
+    playAudio: '播放发音',
+    showAIAnalysis: 'AI 智能分析',
+    rateEasy: '太简单',
+    rateGood: '记住了',
+    rateHard: '有点难',
+    rateAgain: '忘记了',
+  }
   
   // AI 配置状态
   const [aiConfig, setAiConfig] = useState<AIConfig>(() => {
@@ -99,11 +113,25 @@ export default function Settings() {
     // 确保 shortcuts 存在，使用默认值作为后备
     const currentShortcuts = settings.shortcuts || defaultShortcuts
 
+    // 检查快捷键冲突
+    const conflictKey = Object.entries(currentShortcuts).find(
+      ([key, value]) => key !== editingShortcut && value === code
+    )
+
+    if (conflictKey) {
+      const conflictLabel = shortcutLabels[conflictKey[0]] || conflictKey[0]
+      setShortcutConflict(conflictLabel)
+      // 3秒后自动清除冲突提示
+      setTimeout(() => setShortcutConflict(null), 3000)
+      return
+    }
+
     // 更新快捷键
     const newShortcuts = { ...currentShortcuts, [editingShortcut]: code }
     updateSettings({ shortcuts: newShortcuts })
     setEditingShortcut(null)
-  }, [editingShortcut, settings.shortcuts, updateSettings])
+    setShortcutConflict(null)
+  }, [editingShortcut, settings.shortcuts, updateSettings, shortcutLabels])
   
   useEffect(() => {
     if (editingShortcut) {
@@ -399,35 +427,24 @@ export default function Settings() {
                   <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">学习界面</h3>
                   <div className="space-y-1">
                     <ShortcutItem
-                      label="显示答案"
+                      label="显示答案 / 返回当前学习"
+                      shortcutKey="showAnswer"
                       currentValue={settings.shortcuts?.showAnswer || defaultShortcuts.showAnswer}
                       isEditing={editingShortcut === 'showAnswer'}
                       onEdit={() => setEditingShortcut('showAnswer')}
                       onCancel={() => setEditingShortcut(null)}
                     />
                     <ShortcutItem
-                      label="上一个单词"
-                      currentValue={settings.shortcuts?.prevWord || defaultShortcuts.prevWord}
-                      isEditing={editingShortcut === 'prevWord'}
-                      onEdit={() => setEditingShortcut('prevWord')}
-                      onCancel={() => setEditingShortcut(null)}
-                    />
-                    <ShortcutItem
-                      label="下一个单词"
-                      currentValue={settings.shortcuts?.nextWord || defaultShortcuts.nextWord}
-                      isEditing={editingShortcut === 'nextWord'}
-                      onEdit={() => setEditingShortcut('nextWord')}
-                      onCancel={() => setEditingShortcut(null)}
-                    />
-                    <ShortcutItem
-                      label="认识"
+                      label="认识 / 下一个"
+                      shortcutKey="markKnown"
                       currentValue={settings.shortcuts?.markKnown || defaultShortcuts.markKnown}
                       isEditing={editingShortcut === 'markKnown'}
                       onEdit={() => setEditingShortcut('markKnown')}
                       onCancel={() => setEditingShortcut(null)}
                     />
                     <ShortcutItem
-                      label="不认识"
+                      label="不认识 / 上一个"
+                      shortcutKey="markUnknown"
                       currentValue={settings.shortcuts?.markUnknown || defaultShortcuts.markUnknown}
                       isEditing={editingShortcut === 'markUnknown'}
                       onEdit={() => setEditingShortcut('markUnknown')}
@@ -435,6 +452,7 @@ export default function Settings() {
                     />
                     <ShortcutItem
                       label="播放发音"
+                      shortcutKey="playAudio"
                       currentValue={settings.shortcuts?.playAudio || defaultShortcuts.playAudio}
                       isEditing={editingShortcut === 'playAudio'}
                       onEdit={() => setEditingShortcut('playAudio')}
@@ -442,6 +460,7 @@ export default function Settings() {
                     />
                     <ShortcutItem
                       label="AI 智能分析"
+                      shortcutKey="showAIAnalysis"
                       currentValue={settings.shortcuts?.showAIAnalysis || defaultShortcuts.showAIAnalysis}
                       isEditing={editingShortcut === 'showAIAnalysis'}
                       onEdit={() => setEditingShortcut('showAIAnalysis')}
@@ -455,28 +474,32 @@ export default function Settings() {
                   <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">复习评分</h3>
                   <div className="space-y-1">
                     <ShortcutItem
-                      label="简单"
+                      label="太简单"
+                      shortcutKey="rateEasy"
                       currentValue={settings.shortcuts?.rateEasy || defaultShortcuts.rateEasy}
                       isEditing={editingShortcut === 'rateEasy'}
                       onEdit={() => setEditingShortcut('rateEasy')}
                       onCancel={() => setEditingShortcut(null)}
                     />
                     <ShortcutItem
-                      label="一般"
+                      label="记住了"
+                      shortcutKey="rateGood"
                       currentValue={settings.shortcuts?.rateGood || defaultShortcuts.rateGood}
                       isEditing={editingShortcut === 'rateGood'}
                       onEdit={() => setEditingShortcut('rateGood')}
                       onCancel={() => setEditingShortcut(null)}
                     />
                     <ShortcutItem
-                      label="困难"
+                      label="有点难"
+                      shortcutKey="rateHard"
                       currentValue={settings.shortcuts?.rateHard || defaultShortcuts.rateHard}
                       isEditing={editingShortcut === 'rateHard'}
                       onEdit={() => setEditingShortcut('rateHard')}
                       onCancel={() => setEditingShortcut(null)}
                     />
                     <ShortcutItem
-                      label="重来"
+                      label="忘记了"
+                      shortcutKey="rateAgain"
                       currentValue={settings.shortcuts?.rateAgain || defaultShortcuts.rateAgain}
                       isEditing={editingShortcut === 'rateAgain'}
                       onEdit={() => setEditingShortcut('rateAgain')}
@@ -490,6 +513,26 @@ export default function Settings() {
                     💡 提示：点击快捷键按钮后，按下键盘上的任意按键即可完成修改。
                   </p>
                 </div>
+
+                {/* 冲突警告 */}
+                {shortcutConflict && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="bg-red-50 rounded-xl p-4 border border-red-200"
+                  >
+                    <div className="flex items-start gap-2">
+                      <span className="text-red-500 text-lg">⚠️</span>
+                      <div>
+                        <p className="text-sm font-medium text-red-700">快捷键冲突</p>
+                        <p className="text-xs text-red-600 mt-1">
+                          该按键已被"{shortcutConflict}"使用，请选择其他按键。
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
               </div>
               
               <div className="p-6 border-t bg-gray-50">
@@ -679,16 +722,23 @@ export default function Settings() {
 // 快捷键设置项组件
 interface ShortcutItemProps {
   label: string
+  shortcutKey: string
   currentValue: string
   isEditing: boolean
   onEdit: () => void
   onCancel: () => void
+  hasConflict?: boolean
 }
 
-function ShortcutItem({ label, currentValue, isEditing, onEdit, onCancel }: ShortcutItemProps) {
+function ShortcutItem({ label, shortcutKey, currentValue, isEditing, onEdit, onCancel, hasConflict }: ShortcutItemProps) {
   return (
-    <div className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-gray-50">
-      <span className="text-gray-700">{label}</span>
+    <div className={`flex items-center justify-between py-2 px-3 rounded-lg ${hasConflict ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
+      <div className="flex-1">
+        <span className={`text-gray-700 ${hasConflict ? 'text-red-700' : ''}`}>{label}</span>
+        {hasConflict && (
+          <p className="text-xs text-red-500 mt-1">快捷键冲突</p>
+        )}
+      </div>
       {isEditing ? (
         <div className="flex items-center gap-2">
           <span className="px-3 py-1.5 bg-blue-100 text-blue-600 rounded-lg text-sm font-medium animate-pulse">
@@ -704,7 +754,11 @@ function ShortcutItem({ label, currentValue, isEditing, onEdit, onCancel }: Shor
       ) : (
         <button
           onClick={onEdit}
-          className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors min-w-[60px]"
+          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors min-w-[60px] ${
+            hasConflict
+              ? 'bg-red-100 hover:bg-red-200 text-red-700'
+              : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+          }`}
         >
           {getShortcutDisplay(currentValue)}
         </button>

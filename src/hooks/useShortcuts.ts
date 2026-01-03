@@ -61,8 +61,6 @@ export type ShortcutAction = keyof ShortcutSettings
 
 interface ShortcutHandlers {
   showAnswer?: () => void
-  prevWord?: () => void
-  nextWord?: () => void
   markKnown?: () => void
   markUnknown?: () => void
   playAudio?: () => void
@@ -118,12 +116,6 @@ export function useShortcuts(handlers: ShortcutHandlers, enabled: boolean = true
       if (code === currentShortcuts.showAnswer && currentHandlers.showAnswer) {
         e.preventDefault()
         currentHandlers.showAnswer()
-      } else if (code === currentShortcuts.prevWord && currentHandlers.prevWord) {
-        e.preventDefault()
-        currentHandlers.prevWord()
-      } else if (code === currentShortcuts.nextWord && currentHandlers.nextWord) {
-        e.preventDefault()
-        currentHandlers.nextWord()
       } else if (code === currentShortcuts.markKnown && currentHandlers.markKnown) {
         e.preventDefault()
         currentHandlers.markKnown()

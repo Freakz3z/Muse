@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Volume2,
@@ -36,9 +36,12 @@ export default function Review() {
   const [isLoading, setIsLoading] = useState(true)
   const [sessionComplete, setSessionComplete] = useState(false)
   const [startTime, setStartTime] = useState<number>(0)
-  const [correctCount, setCorrectCount] = useState(0)
   const [sessionStartTime, setSessionStartTime] = useState<number>(0)
   const [reviewMode, setReviewMode] = useState<ReviewMode>('smart')
+  const [isProcessing, setIsProcessing] = useState(false)
+  // 使用 Map 追踪每个单词的最终状态：'remembered' | 'forgot'
+  const [wordResults, setWordResults] = useState<Map<string, 'remembered' | 'forgot'>>(new Map())
+  const isProcessingRef = useRef(false)
 
   const currentWord = words[currentIndex]
 
@@ -72,7 +75,7 @@ export default function Review() {
     setCurrentIndex(0)
     setShowAnswer(false)
     setSessionComplete(false)
-    setCorrectCount(0)
+    setWordResults(new Map())
     setSessionStartTime(Date.now())
     if (limitedWords.length > 0) {
       startSession('review', 'all')
@@ -105,32 +108,46 @@ export default function Review() {
   }, [currentIndex, currentWord])
 
   const handleResponse = async (remembered: boolean, difficulty: 'easy' | 'good' | 'hard' | 'again') => {
-    if (!currentWord) return
-    
-    const responseTime = Date.now() - startTime
-    const qualityMap = { easy: 5, good: 4, hard: 3, again: 1 }
-    const quality = remembered ? qualityMap[difficulty] : getQualityFromResponse(responseTime, false)
-    
-    // 更新学习记录
-    await updateRecord(currentWord.id, remembered, quality)
-    recordWordResult(currentWord.id, remembered)
-    
-    // 统计逻辑：只有第一次正确回答才增加正确数
-    // 如果是 "again" 或 "hard"，该单词会再次出现
-    if (remembered && difficulty !== 'hard') {
-      setCorrectCount(c => c + 1)
+    if (!currentWord || isProcessingRef.current) return
+
+    isProcessingRef.current = true
+    setIsProcessing(true)
+
+    try {
+      const responseTime = Date.now() - startTime
+      const qualityMap = { easy: 5, good: 4, hard: 3, again: 1 }
+      const quality = remembered ? qualityMap[difficulty] : getQualityFromResponse(responseTime, false)
+
+      // 更新学习记录
+      await updateRecord(currentWord.id, remembered, quality)
+      recordWordResult(currentWord.id, remembered)
+
+      // 更新单词结果状态
+      // easy/good: 记住了，不再出现
+      // hard/again: 需要再复习，会重新加入队列
+      const finalStatus: 'remembered' | 'forgot' =
+        (difficulty === 'easy' || difficulty === 'good') ? 'remembered' : 'forgot'
+
+      setWordResults(prev => {
+        const newMap = new Map(prev)
+        newMap.set(currentWord.id, finalStatus)
+        return newMap
+      })
+
+      // 优化复习逻辑：如果不记得或觉得困难，加入到本轮复习队列末尾
+      if (difficulty === 'again' || difficulty === 'hard') {
+        setWords(prev => [...prev, currentWord])
+      }
+
+      await updateTodayStats({
+        reviewedWords: todayStats.reviewedWords + 1,
+      })
+
+      goToNext()
+    } finally {
+      isProcessingRef.current = false
+      setIsProcessing(false)
     }
-    
-    // 优化复习逻辑：如果不记得或觉得困难，加入到本轮复习队列末尾
-    if (difficulty === 'again' || difficulty === 'hard') {
-      setWords(prev => [...prev, currentWord])
-    }
-    
-    await updateTodayStats({
-      reviewedWords: todayStats.reviewedWords + 1,
-    })
-    
-    goToNext()
   }
 
   const goToNext = () => {
@@ -237,7 +254,11 @@ export default function Review() {
   }
 
   if (sessionComplete) {
-    const accuracy = words.length > 0 ? Math.round((correctCount / words.length) * 100) : 0
+    // 从 wordResults Map 中计算统计数据
+    const rememberedCount = Array.from(wordResults.values()).filter(s => s === 'remembered').length
+    const forgotCount = Array.from(wordResults.values()).filter(s => s === 'forgot').length
+    const totalUniqueWords = wordResults.size
+    const accuracy = totalUniqueWords > 0 ? Math.round((rememberedCount / totalUniqueWords) * 100) : 0
     const duration = Math.round((Date.now() - sessionStartTime) / 60000)
 
     return (
@@ -251,16 +272,16 @@ export default function Review() {
             <Award className="w-12 h-12 text-white" />
           </div>
           <h2 className="text-3xl font-bold text-gray-800 mb-2">复习完成！</h2>
-          <p className="text-gray-500 mb-8">本轮复习了 {words.length} 个单词</p>
+          <p className="text-gray-500 mb-8">本轮复习了 {totalUniqueWords} 个单词</p>
 
           <div className="bg-white rounded-2xl p-6 shadow-sm mb-8 border border-gray-100">
             <div className="grid grid-cols-3 gap-4">
               <div className="text-center">
-                <p className="text-3xl font-bold text-green-500">{correctCount}</p>
+                <p className="text-3xl font-bold text-green-500">{rememberedCount}</p>
                 <p className="text-gray-500 text-sm mt-1">记住了</p>
               </div>
               <div className="text-center">
-                <p className="text-3xl font-bold text-orange-500">{words.length - correctCount}</p>
+                <p className="text-3xl font-bold text-orange-500">{forgotCount}</p>
                 <p className="text-gray-500 text-sm mt-1">忘记了</p>
               </div>
               <div className="text-center">
@@ -410,28 +431,32 @@ export default function Review() {
                 <div className="grid grid-cols-4 gap-3">
                   <button
                     onClick={() => handleResponse(true, 'easy')}
-                    className="py-3 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl font-medium transition-colors text-sm flex flex-col items-center"
+                    disabled={isProcessing}
+                    className="py-3 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-xl font-medium transition-colors text-sm flex flex-col items-center disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span>太简单</span>
                     <span className="text-xs opacity-60 mt-1">{getShortcutDisplay(settings.shortcuts?.rateEasy || 'Digit1')}</span>
                   </button>
                   <button
                     onClick={() => handleResponse(true, 'good')}
-                    className="py-3 bg-green-50 hover:bg-green-100 text-green-600 rounded-xl font-medium transition-colors text-sm flex flex-col items-center"
+                    disabled={isProcessing}
+                    className="py-3 bg-green-50 hover:bg-green-100 text-green-600 rounded-xl font-medium transition-colors text-sm flex flex-col items-center disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span>记住了</span>
                     <span className="text-xs opacity-60 mt-1">{getShortcutDisplay(settings.shortcuts?.rateGood || 'Digit2')}</span>
                   </button>
                   <button
                     onClick={() => handleResponse(true, 'hard')}
-                    className="py-3 bg-orange-50 hover:bg-orange-100 text-orange-600 rounded-xl font-medium transition-colors text-sm flex flex-col items-center"
+                    disabled={isProcessing}
+                    className="py-3 bg-orange-50 hover:bg-orange-100 text-orange-600 rounded-xl font-medium transition-colors text-sm flex flex-col items-center disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span>有点难</span>
                     <span className="text-xs opacity-60 mt-1">{getShortcutDisplay(settings.shortcuts?.rateHard || 'Digit3')}</span>
                   </button>
                   <button
                     onClick={() => handleResponse(false, 'again')}
-                    className="py-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-medium transition-colors text-sm flex flex-col items-center"
+                    disabled={isProcessing}
+                    className="py-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-medium transition-colors text-sm flex flex-col items-center disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <span>忘记了</span>
                     <span className="text-xs opacity-60 mt-1">{getShortcutDisplay(settings.shortcuts?.rateAgain || 'Digit4')}</span>
@@ -455,13 +480,6 @@ export default function Review() {
       <div className="flex items-center justify-center mt-6 text-gray-400 text-sm">
         <Clock className="w-4 h-4 mr-2" />
         剩余 {words.length - currentIndex - 1} 个单词
-      </div>
-      
-      {/* 快捷键提示 */}
-      <div className="mt-2 text-center">
-        <p className="text-xs text-gray-400">
-          快捷键: {getShortcutDisplay(settings.shortcuts?.playAudio || 'KeyR')} 播放发音
-        </p>
       </div>
     </div>
   )
