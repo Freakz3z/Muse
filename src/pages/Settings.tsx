@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  User, 
-  Target, 
-  Volume2, 
+import {
+  User,
+  Target,
+  Volume2,
   Save,
   Bot,
   CheckCircle,
@@ -17,8 +17,7 @@ import {
   X,
   Settings as SettingsIcon,
   Cpu,
-  Sparkles,
-  Cloud
+  Sparkles
 } from 'lucide-react'
 import { useAppStore } from '../store'
 import { ShortcutSettings, defaultShortcuts } from '../types'
@@ -46,12 +45,36 @@ export default function Settings() {
     markUnknown: '不认识 / 上一个',
     playAudio: '播放发音',
     showAIAnalysis: 'AI 智能分析',
+    nextQuestion: '下一题',
     rateEasy: '太简单',
     rateGood: '记住了',
     rateHard: '有点难',
     rateAgain: '忘记了',
+    toggleFloating: '切换悬浮窗',
   }
-  
+
+  // 快捷键界面分组
+  const shortcutGroups: Record<string, string[]> = {
+    learning: ['showAnswer', 'markKnown', 'markUnknown', 'playAudio', 'showAIAnalysis'],
+    quiz: ['nextQuestion'],
+    review: ['rateEasy', 'rateGood', 'rateHard', 'rateAgain'],
+    global: ['toggleFloating'],
+  }
+
+  // 监听快捷键变化，更新 Electron 全局快捷键（仅在 Electron 环境中）
+  useEffect(() => {
+    if (window.electronAPI && settings.shortcuts?.toggleFloating) {
+      // 将快捷键字符串转换为 Electron 加速器格式
+      // 例如：Alt+KeyX -> Alt+X, Control+Shift+KeyD -> Ctrl+Shift+D
+      const shortcut = settings.shortcuts.toggleFloating
+        .replace('Control', 'Ctrl')
+        .replace(/Key([A-Z])/, '$1')
+        .replace('Digit', '')
+
+      window.electronAPI.updateFloatingShortcut(shortcut)
+    }
+  }, [settings.shortcuts?.toggleFloating])
+
   // AI 配置状态
   const [aiConfig, setAiConfig] = useState<AIConfig>(() => {
     const savedConfig = localStorage.getItem('ai_config')
@@ -105,21 +128,36 @@ export default function Settings() {
     if (!editingShortcut) return
 
     e.preventDefault()
-    const code = e.code
 
     // 忽略修饰键单独按下
     if (['Shift', 'Control', 'Alt', 'Meta'].includes(e.key)) return
 
+    // 构建快捷键字符串（支持组合键）
+    const modifiers: string[] = []
+    if (e.altKey) modifiers.push('Alt')
+    if (e.ctrlKey) modifiers.push('Control')
+    if (e.shiftKey) modifiers.push('Shift')
+    if (e.metaKey) modifiers.push('Meta')
+
+    const shortcutString = modifiers.length > 0
+      ? `${modifiers.join('+')}+${e.code}`
+      : e.code
+
     // 确保 shortcuts 存在，使用默认值作为后备
     const currentShortcuts = settings.shortcuts || defaultShortcuts
 
-    // 检查快捷键冲突
-    const conflictKey = Object.entries(currentShortcuts).find(
-      ([key, value]) => key !== editingShortcut && value === code
+    // 找到当前快捷键所属的界面分组
+    const currentGroup = Object.values(shortcutGroups).find(
+      shortcuts => shortcuts.includes(editingShortcut)
+    ) || []
+
+    // 检查快捷键冲突（只在同一界面内检查）
+    const conflictKey = currentGroup.find(
+      key => key !== editingShortcut && currentShortcuts[key as keyof ShortcutSettings] === shortcutString
     )
 
     if (conflictKey) {
-      const conflictLabel = shortcutLabels[conflictKey[0]] || conflictKey[0]
+      const conflictLabel = shortcutLabels[conflictKey] || conflictKey
       setShortcutConflict(conflictLabel)
       // 3秒后自动清除冲突提示
       setTimeout(() => setShortcutConflict(null), 3000)
@@ -127,11 +165,11 @@ export default function Settings() {
     }
 
     // 更新快捷键
-    const newShortcuts = { ...currentShortcuts, [editingShortcut]: code }
+    const newShortcuts = { ...currentShortcuts, [editingShortcut]: shortcutString }
     updateSettings({ shortcuts: newShortcuts })
     setEditingShortcut(null)
     setShortcutConflict(null)
-  }, [editingShortcut, settings.shortcuts, updateSettings, shortcutLabels])
+  }, [editingShortcut, settings.shortcuts, updateSettings, shortcutLabels, shortcutGroups])
   
   useEffect(() => {
     if (editingShortcut) {
@@ -463,7 +501,21 @@ export default function Settings() {
                     />
                   </div>
                 </div>
-                
+
+                {/* 测验界面快捷键 */}
+                <div>
+                  <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">测验界面</h3>
+                  <div className="space-y-1">
+                    <ShortcutItem
+                      label="下一题"
+                      currentValue={settings.shortcuts?.nextQuestion || defaultShortcuts.nextQuestion}
+                      isEditing={editingShortcut === 'nextQuestion'}
+                      onEdit={() => setEditingShortcut('nextQuestion')}
+                      onCancel={() => setEditingShortcut(null)}
+                    />
+                  </div>
+                </div>
+
                 {/* 复习界面快捷键 */}
                 <div>
                   <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">复习评分</h3>
@@ -498,7 +550,21 @@ export default function Settings() {
                     />
                   </div>
                 </div>
-                
+
+                {/* 全局快捷键 */}
+                <div>
+                  <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">全局快捷键</h3>
+                  <div className="space-y-1">
+                    <ShortcutItem
+                      label="切换悬浮窗"
+                      currentValue={settings.shortcuts?.toggleFloating || defaultShortcuts.toggleFloating}
+                      isEditing={editingShortcut === 'toggleFloating'}
+                      onEdit={() => setEditingShortcut('toggleFloating')}
+                      onCancel={() => setEditingShortcut(null)}
+                    />
+                  </div>
+                </div>
+
                 <div className="bg-purple-50 rounded-xl p-4 border border-purple-100">
                   <p className="text-sm text-purple-700">
                     💡 提示：点击快捷键按钮后，按下键盘上的任意按键即可完成修改。
@@ -588,7 +654,7 @@ export default function Settings() {
                         {[
                           { id: 'openai', name: 'OpenAI', desc: '标准 API 协议', icon: <SettingsIcon className="w-4 h-4" /> },
                           { id: 'ollama', name: 'Ollama', desc: '本地推理协议', icon: <Cpu className="w-4 h-4" /> },
-                          { id: 'anthropic', name: 'Claude', desc: 'Anthropic 协议', icon: <Cloud className="w-4 h-4" /> },
+                          { id: 'anthropic', name: 'Claude', desc: 'Anthropic 协议', icon: <Sparkles className="w-4 h-4" /> },
                           { id: 'gemini', name: 'Gemini', desc: 'Google AI 协议', icon: <Sparkles className="w-4 h-4" /> },
                         ].map(provider => (
                           <button

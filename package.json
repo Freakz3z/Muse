@@ -1,6 +1,6 @@
 {
   "name": "muse-english",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "description": "Muse - AI-Driven Intelligent English Vocabulary Learning Assistant",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -9,32 +9,41 @@
     "build:web": "tsc && vite build",
     "preview": "vite preview",
     "electron:dev": "concurrently \"vite --mode electron\" \"wait-on http://localhost:5173 && electron .\"",
-    "electron:build": "vite build --mode electron && electron-builder"
+    "electron:build": "vite build --mode electron && electron-builder",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "framer-motion": "^10.16.16",
+    "localforage": "^1.10.0",
+    "lucide-react": "^0.294.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.0",
-    "zustand": "^4.4.7",
-    "localforage": "^1.10.0",
     "recharts": "^2.10.3",
-    "lucide-react": "^0.294.0",
-    "framer-motion": "^10.16.16"
+    "zustand": "^4.4.7"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^14.3.1",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@vitejs/plugin-react": "^4.2.1",
+    "@vitest/coverage-v8": "^1.6.1",
     "autoprefixer": "^10.4.16",
     "concurrently": "^8.2.2",
     "electron": "^28.0.0",
     "electron-builder": "^24.9.1",
+    "happy-dom": "^12.10.3",
+    "jsdom": "^23.2.0",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.3.6",
     "typescript": "^5.3.3",
     "vite": "^5.0.8",
     "vite-plugin-electron": "^0.15.5",
     "vite-plugin-electron-renderer": "^0.14.5",
+    "vitest": "^1.1.0",
     "wait-on": "^7.2.0"
   },
   "build": {
@@ -48,6 +57,12 @@
       "dist/**/*",
       "dist-electron/**/*",
       "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "public/Muse.ico",
+        "to": "Muse.ico"
+      }
     ],
     "win": {
       "target": "nsis",

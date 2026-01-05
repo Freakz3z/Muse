@@ -25,7 +25,7 @@
   <img src="https://img.shields.io/badge/React-18.2.0-61DAFB?logo=react" alt="React">
   <img src="https://img.shields.io/badge/TypeScript-5.3-3178C6?logo=typescript" alt="TypeScript">
   <img src="https://img.shields.io/badge/Vite-5.0-646CFF?logo=vite" alt="Vite">
-  <img src="https://img.shields.io/badge/Version-1.6.0-orange" alt="Version">
+  <img src="https://img.shields.io/badge/Version-1.6.1-orange" alt="Version">
   <img src="https://img.shields.io/badge/License-Apache_2.0-blue" alt="License">
 </p>
 
@@ -49,6 +49,7 @@
 - 🎯 **智能测验系统** - AI 根据你的词汇水平实时生成动态题目
 - 📊 **可视化统计** - 学习进度、正确率、记忆曲线一目了然
 - ⌨️ **完整快捷键** - 高效的键盘操作,提升学习效率
+- 🔄 **自动更新检查** - 启动时自动检查更新,支持手动检查最新版本
 
 ## ✨ 功能特性
 
@@ -220,6 +221,7 @@ Muse 使用经典的 SM-2 算法来优化复习时机:
 | 快捷键 | 功能 |
 |--------|------|
 | `Ctrl + Shift + M` | 显示/隐藏主窗口 |
+| `Alt + X` | 显示/隐藏悬浮查词窗(可自定义) |
 
 ### 学习界面快捷键 (可自定义)
 
@@ -250,6 +252,8 @@ Muse 使用经典的 SM-2 算法来优化复习时机:
 - 💜 AI 功能紫色系配色
 - 📱 响应式布局
 - 🎯 统一的学习/复习界面风格
+- 🪟 悬浮查词窗 - 快速查词,随时添加
+- 📋 精美的更新日志展示
 
 ## 📊 数据存储
 

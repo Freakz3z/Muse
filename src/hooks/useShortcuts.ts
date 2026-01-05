@@ -2,6 +2,14 @@ import { useEffect, useRef } from 'react'
 import { useAppStore } from '../store'
 import { ShortcutSettings, defaultShortcuts } from '../types'
 
+// 修饰键到显示符号的映射
+const modifierKeyToDisplay: Record<string, string> = {
+  'Alt': 'Alt',
+  'Control': 'Ctrl',
+  'Shift': 'Shift',
+  'Meta': 'Win',
+}
+
 // 快捷键代码到显示名称的映射
 export const keyCodeToDisplay: Record<string, string> = {
   'Space': '空格',
@@ -51,9 +59,51 @@ export const keyCodeToDisplay: Record<string, string> = {
   'Backspace': '退格',
 }
 
+// 解析快捷键字符串（支持组合键）
+// 格式: "Alt+KeyX" 或 "KeyA" 或 "Control+Shift+KeyD"
+export function parseShortcut(shortcut: string): { modifiers: string[]; key: string } {
+  const parts = shortcut.split('+').map(p => p.trim())
+  const modifiers: string[] = []
+  let key = ''
+
+  for (const part of parts) {
+    if (['Alt', 'Control', 'Shift', 'Meta'].includes(part)) {
+      modifiers.push(part)
+    } else {
+      key = part
+    }
+  }
+
+  return { modifiers, key }
+}
+
 // 获取快捷键的显示名称
 export function getShortcutDisplay(code: string): string {
-  return keyCodeToDisplay[code] || code
+  const { modifiers, key } = parseShortcut(code)
+  const modifierDisplay = modifiers.map(m => modifierKeyToDisplay[m] || m).join('+')
+  const keyDisplay = keyCodeToDisplay[key] || key
+
+  return modifierDisplay ? `${modifierDisplay}+${keyDisplay}` : keyDisplay
+}
+
+// 检查快捷键是否匹配
+export function matchShortcut(shortcut: string, event: KeyboardEvent): boolean {
+  const { modifiers, key } = parseShortcut(shortcut)
+
+  // 检查修饰键
+  if (modifiers.includes('Alt') && !event.altKey) return false
+  if (modifiers.includes('Control') && !event.ctrlKey) return false
+  if (modifiers.includes('Shift') && !event.shiftKey) return false
+  if (modifiers.includes('Meta') && !event.metaKey) return false
+
+  // 确保不匹配额外的修饰键
+  if (!modifiers.includes('Alt') && event.altKey) return false
+  if (!modifiers.includes('Control') && event.ctrlKey) return false
+  if (!modifiers.includes('Shift') && event.shiftKey) return false
+  if (!modifiers.includes('Meta') && event.metaKey) return false
+
+  // 检查主键
+  return event.code === key
 }
 
 // 快捷键动作类型
@@ -109,38 +159,37 @@ export function useShortcuts(handlers: ShortcutHandlers, enabled: boolean = true
       const currentShortcuts = shortcutsRef.current
       if (!currentShortcuts) return
 
-      const code = e.code
       const currentHandlers = handlersRef.current
 
-      // 匹配快捷键并执行对应操作
-      if (code === currentShortcuts.showAnswer && currentHandlers.showAnswer) {
+      // 匹配快捷键并执行对应操作（使用 matchShortcut 支持组合键）
+      if (matchShortcut(currentShortcuts.showAnswer, e) && currentHandlers.showAnswer) {
         e.preventDefault()
         currentHandlers.showAnswer()
-      } else if (code === currentShortcuts.markKnown && currentHandlers.markKnown) {
+      } else if (matchShortcut(currentShortcuts.markKnown, e) && currentHandlers.markKnown) {
         e.preventDefault()
         currentHandlers.markKnown()
-      } else if (code === currentShortcuts.markUnknown && currentHandlers.markUnknown) {
+      } else if (matchShortcut(currentShortcuts.markUnknown, e) && currentHandlers.markUnknown) {
         e.preventDefault()
         currentHandlers.markUnknown()
-      } else if (code === currentShortcuts.playAudio && currentHandlers.playAudio) {
+      } else if (matchShortcut(currentShortcuts.playAudio, e) && currentHandlers.playAudio) {
         e.preventDefault()
         currentHandlers.playAudio()
-      } else if (code === currentShortcuts.showAIAnalysis && currentHandlers.showAIAnalysis) {
+      } else if (matchShortcut(currentShortcuts.showAIAnalysis, e) && currentHandlers.showAIAnalysis) {
         e.preventDefault()
         currentHandlers.showAIAnalysis()
-      } else if (code === currentShortcuts.rateEasy && currentHandlers.rateEasy) {
+      } else if (matchShortcut(currentShortcuts.rateEasy, e) && currentHandlers.rateEasy) {
         e.preventDefault()
         currentHandlers.rateEasy()
-      } else if (code === currentShortcuts.rateGood && currentHandlers.rateGood) {
+      } else if (matchShortcut(currentShortcuts.rateGood, e) && currentHandlers.rateGood) {
         e.preventDefault()
         currentHandlers.rateGood()
-      } else if (code === currentShortcuts.rateHard && currentHandlers.rateHard) {
+      } else if (matchShortcut(currentShortcuts.rateHard, e) && currentHandlers.rateHard) {
         e.preventDefault()
         currentHandlers.rateHard()
-      } else if (code === currentShortcuts.rateAgain && currentHandlers.rateAgain) {
+      } else if (matchShortcut(currentShortcuts.rateAgain, e) && currentHandlers.rateAgain) {
         e.preventDefault()
         currentHandlers.rateAgain()
-      } else if (code === currentShortcuts.toggleFloating && currentHandlers.toggleFloating) {
+      } else if (matchShortcut(currentShortcuts.toggleFloating, e) && currentHandlers.toggleFloating) {
         e.preventDefault()
         currentHandlers.toggleFloating()
       }

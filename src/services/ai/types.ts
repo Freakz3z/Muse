@@ -71,6 +71,12 @@ export interface QuizQuestion {
   correctAnswer: string;
   explanation: string;
   difficulty: 'easy' | 'medium' | 'hard';
+  // 新增：提示信息
+  hints?: {
+    translation?: string; // 中文释义
+    firstLetter?: string; // 首字母提示
+    prefix?: string; // 前几个字母提示（用于简单题）
+  };
 }
 
 export interface AIQuiz {

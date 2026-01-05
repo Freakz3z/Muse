@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { 
+import {
   Brain,
-  CheckCircle2, 
-  XCircle, 
-  Clock, 
+  CheckCircle2,
+  XCircle,
+  Clock,
   Trophy,
   Loader2,
   ArrowRight,
@@ -27,9 +27,83 @@ export default function AIQuizPage() {
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [showAnswer, setShowAnswer] = useState(false)
   const [timeLeft, setTimeLeft] = useState(0)
+  const [isCheckingAnswer, setIsCheckingAnswer] = useState(false) // AI判断翻译题时的加载状态
+
+  // 智能答案判定函数
+  const checkAnswer = async (userAnswer: string, correctAnswer: string, question: QuizQuestion): Promise<boolean> => {
+    // 跳过的题目不算错
+    if (userAnswer === '__skip__') return false
+
+    // 选择题：严格匹配
+    if (question.type === 'choice') {
+      return userAnswer === correctAnswer
+    }
+
+    // 标准化函数：去除空格、标点，转小写
+    const normalize = (str: string) => {
+      return str
+        .trim()
+        .toLowerCase()
+        .replace(/[.,!?;:'"()，。！？；：""（）]/g, '')
+        .replace(/\s+/g, ' ')
+    }
+
+    const normalizedUser = normalize(userAnswer)
+    const normalizedCorrect = normalize(correctAnswer)
+
+    // 拼写题：严格但忽略大小写
+    if (question.type === 'spelling') {
+      return normalizedUser === normalizedCorrect
+    }
+
+    // 填空题：标准化后比较
+    if (question.type === 'fill') {
+      return normalizedUser === normalizedCorrect
+    }
+
+    // 翻译题：使用AI判断
+    if (question.type === 'translation') {
+      // 先做简单匹配
+      if (normalizedUser === normalizedCorrect) {
+        return true
+      }
+
+      // 如果AI服务已配置，使用AI判断
+      if (aiService.isConfigured()) {
+        try {
+          setIsCheckingAnswer(true)
+          const result = await aiService.checkTranslationAnswer(
+            question.question,
+            userAnswer,
+            correctAnswer
+          )
+          setIsCheckingAnswer(false)
+          return result.isCorrect
+        } catch (error) {
+          console.error('AI判断翻译失败，使用基础匹配:', error)
+          setIsCheckingAnswer(false)
+          // 降级：检查关键词是否包含
+          const userWords = normalizedUser.split(' ')
+          const correctWords = normalizedCorrect.split(' ')
+          const matchedWords = userWords.filter(w => correctWords.includes(w))
+          return matchedWords.length / correctWords.length >= 0.5
+        }
+      } else {
+        // AI未配置，使用关键词匹配
+        const userWords = normalizedUser.split(' ')
+        const correctWords = normalizedCorrect.split(' ')
+        const matchedWords = userWords.filter(w => correctWords.includes(w))
+        return matchedWords.length / correctWords.length >= 0.5
+      }
+    }
+
+    return false
+  }
+
   const [score, setScore] = useState(0)
   const [isConfigured, setIsConfigured] = useState(false)
   const [sessionStartTime, setSessionStartTime] = useState<number>(0)
+  const [answerResults, setAnswerResults] = useState<Record<string, boolean>>({}) // 缓存答案判定结果
 
   // 配置选项
   const [questionCount, setQuestionCount] = useState(10)
@@ -90,15 +164,22 @@ export default function AIQuizPage() {
     }
   }
 
-  const handleAnswer = (answer: string) => {
+  const handleAnswer = async (answer: string) => {
     if (!quiz || showAnswer) return
-    
+
     const question = quiz.questions[currentIndex]
     setAnswers(prev => ({ ...prev, [question.id]: answer }))
+
+    // 使用智能判定检查答案
+    const isCorrect = await checkAnswer(answer, question.correctAnswer, question)
+
+    // 缓存判定结果
+    setAnswerResults(prev => ({ ...prev, [question.id]: isCorrect }))
+
     setShowAnswer(true)
 
     // 计算得分（如果不是跳过）
-    if (answer !== '__skip__' && answer === question.correctAnswer) {
+    if (answer !== '__skip__' && isCorrect) {
       setScore(prev => prev + Math.floor(quiz.totalScore / quiz.questions.length))
     }
   }
@@ -127,6 +208,7 @@ export default function AIQuizPage() {
     setQuizState('setup')
     setQuiz(null)
     setAnswers({})
+    setAnswerResults({})
     setScore(0)
   }
 
@@ -277,7 +359,7 @@ export default function AIQuizPage() {
   if (quizState === 'playing' && quiz) {
     const question = quiz.questions[currentIndex]
     const userAnswer = answers[question.id]
-    const isCorrect = userAnswer === question.correctAnswer
+    const isCorrect = answerResults[question.id] ?? (userAnswer === question.correctAnswer)
 
     return (
       <div className="max-w-2xl mx-auto">
@@ -384,6 +466,14 @@ export default function AIQuizPage() {
               </div>
             )}
 
+            {/* AI正在判断提示 - 显示在题目下方 */}
+            {isCheckingAnswer && showAnswer && question.type === 'translation' && (
+              <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200 flex items-center justify-center gap-3">
+                <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                <span className="text-blue-700 text-sm font-medium">AI 正在分析您的翻译...</span>
+              </div>
+            )}
+
             {question.type === 'choice' && !showAnswer && (
               <button
                 onClick={() => {
@@ -397,37 +487,153 @@ export default function AIQuizPage() {
 
             {(question.type === 'fill' || question.type === 'spelling' || question.type === 'translation') && (
               <div>
-                <input
-                  type="text"
-                  placeholder="请输入答案..."
-                  className="w-full p-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500"
-                  disabled={showAnswer}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !showAnswer) {
-                      handleAnswer((e.target as HTMLInputElement).value)
-                    }
-                  }}
-                />
-                {!showAnswer && (
-                  <button
-                    onClick={(e) => {
-                      const input = (e.target as HTMLElement).previousElementSibling as HTMLInputElement
-                      handleAnswer(input?.value || '')
-                    }}
-                    className="mt-3 px-6 py-2 bg-purple-500 text-white rounded-lg font-medium hover:bg-purple-600"
-                  >
-                    确认
-                  </button>
+                {/* 提示信息区域 - 拼写题不显示提示 */}
+                {question.type !== 'spelling' && (
+                  <div className="mb-4 space-y-3">
+                    {/* 中文释义提示 - 默认显示（拼写题除外） */}
+                    {question.hints?.translation && (
+                      <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                        <p className="text-sm text-blue-800">
+                          📖 中文释义：{question.hints.translation}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* 字母提示 - 根据难度显示（拼写题除外） */}
+                    {question.difficulty === 'easy' && question.hints?.prefix && (
+                      <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                        <p className="text-sm text-green-800">
+                          💡 提示：单词开头是 <span className="font-bold text-green-900">{question.hints.prefix}</span>...
+                        </p>
+                      </div>
+                    )}
+
+                    {question.difficulty === 'medium' && question.hints?.firstLetter && (
+                      <div className="p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+                        <p className="text-sm text-yellow-800">
+                          💡 提示：首字母是 <span className="font-bold text-yellow-900">{question.hints.firstLetter}</span>
+                        </p>
+                      </div>
+                    )}
+
+                    {/* 难题提示 */}
+                    {question.difficulty === 'hard' && question.type === 'fill' && (
+                      <div className="p-3 bg-red-50 rounded-lg border border-red-200">
+                        <p className="text-sm text-red-800">
+                          ⚠️ 这是一道难题，注意句子中的上下文和空缺部分
+                        </p>
+                      </div>
+                    )}
+
+                    {/* 通用提示 */}
+                    {!question.hints?.translation && (
+                      <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <p className="text-sm text-gray-700">
+                          {question.type === 'fill' && '💡 提示：根据句子中的上下文，填写正确的英文单词'}
+                          {question.type === 'translation' && '💡 提示：将下面的句子翻译成英文'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 )}
-                {!showAnswer && (
-                  <button
-                    onClick={() => {
-                      handleAnswer('__skip__')
-                    }}
-                    className="mt-3 ml-3 px-6 py-2 text-gray-600 border-2 border-gray-300 rounded-lg font-medium hover:bg-gray-50"
-                  >
-                    不会，查看答案
-                  </button>
+
+                {/* 拼写题的特殊说明 */}
+                {question.type === 'spelling' && (
+                  <div className="mb-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
+                    <p className="text-sm text-purple-800">
+                      ✏️ 拼写题：根据题目给出的中文释义，凭记忆拼写正确的英文单词
+                    </p>
+                  </div>
+                )}
+
+                {/* 难题自动转为选择题 */}
+                {question.difficulty === 'hard' && question.type === 'fill' && question.options ? (
+                  <div className="space-y-3">
+                    <p className="text-sm text-gray-600 mb-2">这道题比较难，请从下面的选项中选择：</p>
+                    {question.options.map((option, index) => {
+                      const letter = String.fromCharCode(65 + index)
+                      const isSelected = userAnswer === option
+                      const isCorrectOption = option === question.correctAnswer
+
+                      return (
+                        <button
+                          key={index}
+                          onClick={() => handleAnswer(option)}
+                          disabled={showAnswer}
+                          className={`w-full p-4 rounded-xl text-left transition-all flex items-center gap-3 ${
+                            showAnswer
+                              ? isCorrectOption
+                                ? 'bg-green-50 border-2 border-green-500'
+                                : isSelected
+                                  ? 'bg-red-50 border-2 border-red-500'
+                                  : 'bg-gray-50 border-2 border-transparent'
+                              : isSelected
+                                ? 'bg-purple-50 border-2 border-purple-500'
+                                : 'bg-gray-50 border-2 border-transparent hover:bg-gray-100'
+                          }`}
+                        >
+                          <span className={`w-8 h-8 rounded-full flex items-center justify-center font-medium ${
+                            showAnswer
+                              ? isCorrectOption
+                                ? 'bg-green-500 text-white'
+                                : isSelected
+                                  ? 'bg-red-500 text-white'
+                                  : 'bg-gray-200 text-gray-600'
+                              : isSelected
+                                ? 'bg-purple-500 text-white'
+                                : 'bg-gray-200 text-gray-600'
+                          }`}>
+                            {letter}
+                          </span>
+                          <span className={showAnswer && isCorrectOption ? 'text-green-700 font-medium' : 'text-gray-700'}>
+                            {option}
+                          </span>
+                          {showAnswer && isCorrectOption && (
+                            <CheckCircle2 className="w-5 h-5 text-green-500 ml-auto" />
+                          )}
+                          {showAnswer && isSelected && !isCorrectOption && (
+                            <XCircle className="w-5 h-5 text-red-500 ml-auto" />
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  /* 普通输入模式 */
+                  <>
+                    <input
+                      type="text"
+                      placeholder="请输入答案..."
+                      className="w-full p-4 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-500"
+                      disabled={showAnswer}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !showAnswer) {
+                          handleAnswer((e.target as HTMLInputElement).value)
+                        }
+                      }}
+                    />
+                    {!showAnswer && (
+                      <button
+                        onClick={(e) => {
+                          const input = (e.target as HTMLElement).previousElementSibling as HTMLInputElement
+                          handleAnswer(input?.value || '')
+                        }}
+                        className="mt-3 px-6 py-2 bg-purple-500 text-white rounded-lg font-medium hover:bg-purple-600"
+                      >
+                        确认
+                      </button>
+                    )}
+                    {!showAnswer && (
+                      <button
+                        onClick={() => {
+                          handleAnswer('__skip__')
+                        }}
+                        className="mt-3 ml-3 px-6 py-2 text-gray-600 border-2 border-gray-300 rounded-lg font-medium hover:bg-gray-50"
+                      >
+                        不会，查看答案
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -503,9 +709,7 @@ export default function AIQuizPage() {
   // 结果页面
   if (quizState === 'result' && quiz) {
     const totalQuestions = quiz.questions.length
-    const correctCount = Object.entries(answers).filter(
-      ([id, answer]) => quiz.questions.find(q => q.id === id)?.correctAnswer === answer
-    ).length
+    const correctCount = quiz.questions.filter(q => answerResults[q.id] === true).length
     const accuracy = (correctCount / totalQuestions) * 100
 
     return (
@@ -549,7 +753,7 @@ export default function AIQuizPage() {
               <div className="space-y-2">
                 {quiz.questions.map((question, index) => {
                   const userAnswer = answers[question.id]
-                  const isCorrect = userAnswer === question.correctAnswer
+                  const isCorrect = answerResults[question.id] ?? (userAnswer === question.correctAnswer)
                   return (
                     <div
                       key={question.id}

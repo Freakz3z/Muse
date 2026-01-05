@@ -1,23 +1,25 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import { 
-  Search, 
-  Loader2, 
-  Plus, 
-  Volume2, 
+import {
+  Search,
+  Loader2,
+  Plus,
+  Volume2,
   Sparkles,
   Brain,
   BookOpen,
   Check,
   AlertCircle,
   History,
-  X
+  X,
+  ChevronRight
 } from 'lucide-react'
 import { useAppStore } from '../store'
 import { Word } from '../types'
 import { aiService } from '../services/ai'
 import { wordStorage } from '../storage'
 import { WordMeaningExplanation, AIConfig, defaultAIConfig } from '../services/ai/types'
+import { voiceService } from '../services/voice'
 
 // 获取AI配置
 const getAIConfig = (): AIConfig => {
@@ -38,6 +40,56 @@ const saveSearchHistory = (word: string) => {
   localStorage.setItem('search_history', JSON.stringify(newHistory))
 }
 
+// 搜索缓存接口
+interface SearchCache {
+  word: string
+  result: Word
+  aiExplanation: WordMeaningExplanation | null
+  timestamp: number
+}
+
+// 获取所有缓存的搜索结果
+const getSearchCache = (): SearchCache[] => {
+  try {
+    const cache = localStorage.getItem('search_cache')
+    return cache ? JSON.parse(cache) : []
+  } catch {
+    return []
+  }
+}
+
+// 保存搜索结果到缓存
+const saveSearchCache = (word: string, result: Word, aiExplanation: WordMeaningExplanation | null) => {
+  const cache = getSearchCache()
+  // 移除旧的缓存（如果有）
+  const filtered = cache.filter(item => item.word !== word)
+  // 添加新的缓存
+  const newCache = [
+    {
+      word,
+      result,
+      aiExplanation,
+      timestamp: Date.now()
+    },
+    ...filtered
+  ].slice(0, 20) // 最多保存20个缓存
+
+  localStorage.setItem('search_cache', JSON.stringify(newCache))
+}
+
+// 从缓存中获取特定单词的搜索结果
+const getCachedResult = (word: string): { result: Word | null; aiExp: WordMeaningExplanation | null } | null => {
+  const cache = getSearchCache()
+  const cached = cache.find(item => item.word.toLowerCase() === word.toLowerCase())
+  if (cached) {
+    return {
+      result: cached.result,
+      aiExp: cached.aiExplanation
+    }
+  }
+  return null
+}
+
 export default function SearchPage() {
   const { books, addWord, addWordToBook, words } = useAppStore()
   const [searchQuery, setSearchQuery] = useState('')
@@ -52,9 +104,10 @@ export default function SearchPage() {
   const [duplicateWordError, setDuplicateWordError] = useState<string | null>(null)
   const [searchHistory, setSearchHistory] = useState<string[]>(getSearchHistory())
   const [wordExistsInBooks, setWordExistsInBooks] = useState<Set<string>>(new Set())
+  const [returnWarning, setReturnWarning] = useState(false) // 返回警告提示
 
-  // 获取自定义词库
-  const customBooks = books.filter(b => b.category === 'custom')
+  // 获取自定义词库 - 使用 memo 避免重复计算
+  const customBooks = useMemo(() => books.filter(b => b.category === 'custom'), [books])
 
   // 检查单词在哪些词库中已存在
   useEffect(() => {
@@ -70,6 +123,8 @@ export default function SearchPage() {
         }
       })
       setWordExistsInBooks(existsIn)
+    } else {
+      setWordExistsInBooks(new Set())
     }
   }, [searchResult, customBooks, words])
 
@@ -130,11 +185,30 @@ export default function SearchPage() {
     setSearchResult(null)
     setAiExplanation(null)
     setAddSuccess(false)
-    
+    setReturnWarning(false)
+
+    // 检查缓存
+    const cached = getCachedResult(queryWord)
+    if (cached && cached.result) {
+      // 使用缓存的数据
+      setSearchResult(cached.result)
+      setIsSearching(false)
+
+      if (cached.aiExp) {
+        setAiExplanation(cached.aiExp)
+        setDisplayedExplanation(cached.aiExp)
+      }
+
+      // 保存搜索历史
+      saveSearchHistory(queryWord)
+      setSearchHistory(getSearchHistory())
+      return
+    }
+
     try {
       // 第一阶段：快速获取基本信息（词性、释义）
       const basicInfo = await aiService.enrichWordInfo(queryWord)
-      
+
       if (basicInfo) {
         // 先显示基本信息
         const wordData: Word = {
@@ -153,24 +227,24 @@ export default function SearchPage() {
           frequency: 'medium',
           tags: ['AI搜索'],
         }
-        
+
         setSearchResult(wordData)
         setIsSearching(false)
-        
+
         // 保存搜索历史
         saveSearchHistory(queryWord)
         setSearchHistory(getSearchHistory())
-        
+
         // 第二阶段：异步获取详细信息（例句、同义词等）
         setIsAnalyzing(true)
-        
+
         try {
           // 并行请求详细信息和深度分析
           const [detailedInfo, explanation] = await Promise.all([
             aiService.searchWord(queryWord),
             aiService.explainWordMeaning(queryWord)
           ])
-          
+
           // 更新为完整信息
           if (detailedInfo) {
             const enrichedWordData: Word = {
@@ -183,8 +257,11 @@ export default function SearchPage() {
               frequency: 'medium',
             }
             setSearchResult(enrichedWordData)
+
+            // 保存完整的搜索结果到缓存
+            saveSearchCache(queryWord, enrichedWordData, explanation)
           }
-          
+
           // 设置AI深度分析并显示打字机特效
           if (explanation) {
             setAiExplanation(explanation)
@@ -192,7 +269,10 @@ export default function SearchPage() {
           }
         } catch (detailError) {
           console.error('获取详细信息失败:', detailError)
-          // 即使详细信息失败，也保留基本信息
+          // 即使详细信息失败，也保存基本信息到缓存
+          if (wordData) {
+            saveSearchCache(queryWord, wordData, null)
+          }
         } finally {
           setIsAnalyzing(false)
         }
@@ -244,11 +324,12 @@ export default function SearchPage() {
     }
   }
 
-  const playAudio = (word: string) => {
-    const utterance = new SpeechSynthesisUtterance(word)
-    utterance.lang = 'en-US'
-    utterance.rate = 0.9
-    speechSynthesis.speak(utterance)
+  const playAudio = async (word: string) => {
+    try {
+      await voiceService.play(word, 'us')
+    } catch (error) {
+      console.error('Audio playback failed:', error)
+    }
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -260,6 +341,21 @@ export default function SearchPage() {
   const clearHistory = () => {
     localStorage.removeItem('search_history')
     setSearchHistory([])
+  }
+
+  const handleReturn = () => {
+    // 如果AI正在生成，显示警告
+    if (isAnalyzing) {
+      setReturnWarning(true)
+      setTimeout(() => setReturnWarning(false), 3000)
+      return
+    }
+
+    // 清除当前搜索结果
+    setSearchResult(null)
+    setAiExplanation(null)
+    setDisplayedExplanation({})
+    setReturnWarning(false)
   }
 
   return (
@@ -377,6 +473,37 @@ export default function SearchPage() {
           animate={{ opacity: 1, y: 0 }}
           className="space-y-6"
         >
+          {/* 返回按钮 */}
+          <div>
+            <button
+              onClick={handleReturn}
+              disabled={isAnalyzing}
+              className={`flex items-center gap-2 transition-colors group ${
+                isAnalyzing
+                  ? 'text-gray-400 cursor-not-allowed'
+                  : 'text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <ChevronRight className="w-5 h-5 rotate-180 group-hover:-translate-x-1 transition-transform" />
+              <span className="font-medium">
+                {isAnalyzing ? 'AI生成中...' : '返回搜索'}
+              </span>
+            </button>
+
+            {/* 返回警告提示 */}
+            {returnWarning && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="mt-2 p-3 bg-amber-50 text-amber-700 rounded-lg text-sm border border-amber-200 flex items-center gap-2"
+              >
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                AI 正在生成中，请等待完成后再返回
+              </motion.div>
+            )}
+          </div>
+
           {/* 单词基本信息 */}
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-6 text-white">

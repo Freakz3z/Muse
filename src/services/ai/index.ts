@@ -380,8 +380,8 @@ ${contextHint}
     const selectedTypes = types.map(t => typeDescriptions[t]).join('\n');
 
     const response = await this.chat([
-      { 
-        role: 'system', 
+      {
+        role: 'system',
         content: `你是一个英语测验出题专家。请根据给定的单词列表生成${questionCount}道测验题。
 
 题目类型包括：
@@ -395,10 +395,15 @@ ${selectedTypes}
       "type": "choice/fill/translation/spelling",
       "word": "考查的单词",
       "question": "题目内容",
-      "options": ["选项A", "选项B", "选项C", "选项D"],  // 选择题需要
+      "options": ["选项A", "选项B", "选项C", "选项D"],  // 选择题需要，困难填空题也需要
       "correctAnswer": "正确答案",
       "explanation": "解析",
-      "difficulty": "easy/medium/hard"
+      "difficulty": "easy/medium/hard",
+      "hints": {
+        "translation": "中文释义",  // 所有题目都提供中文释义
+        "firstLetter": "首字母",    // 中等题目提供首字母
+        "prefix": "前2-3个字母"     // 简单题目提供前几个字母
+      }
     }
   ],
   "totalScore": 100,
@@ -406,12 +411,20 @@ ${selectedTypes}
 }
 
 要求：
-1. 题目难度要有梯度
-2. 干扰选项要有迷惑性但不能太离谱
-3. 解析要简洁明了
-4. 尽量覆盖所有给定单词
+1. 题目难度要有梯度（简单30%、中等50%、困难20%）
+2. 简单题目：提供prefix（前2-3个字母）作为提示
+3. 中等题目：提供firstLetter（首字母）作为提示
+4. 困难题目：必须提供options选项，将填空题改为选择题模式
+5. **拼写题(spelling)**：
+   - question字段必须包含中文释义和音标（如："happy /ˈhæpi/ 快乐的"）
+   - hints字段不提供任何提示信息（不设置hints或设为空对象）
+   - 这样学生能看到要拼写的内容，但不额外的字母提示
+6. 选择题、填空题、翻译题必须提供translation（中文释义）
+7. 干扰选项要有迷惑性但不能太离谱
+8. 解析要简洁明了
+9. 尽量覆盖所有给定单词
 
-只返回JSON，不要其他内容。` 
+只返回JSON，不要其他内容。`
       },
       { role: 'user', content: `请为以下单词出题：${words.join(', ')}` },
     ]);
@@ -419,7 +432,55 @@ ${selectedTypes}
     try {
       const jsonMatch = response.content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
-        return JSON.parse(jsonMatch[0]);
+        const result = JSON.parse(jsonMatch[0]);
+
+        // 后处理：确保题目有正确的提示和选项
+        result.questions = result.questions.map((q: QuizQuestion) => {
+          // 确保hints对象存在
+          if (!q.hints) {
+            q.hints = {};
+          }
+
+          // **拼写题：移除所有提示信息**
+          if (q.type === 'spelling') {
+            q.hints = {}; // 清空所有提示
+            return q;
+          }
+
+          // 困难填空题：如果没有选项，生成默认选项
+          if (q.difficulty === 'hard' && q.type === 'fill' && !q.options) {
+            const correctWord = q.correctAnswer.toLowerCase();
+            q.options = [correctWord];
+
+            // 生成一些干扰项
+            const distractors = ['make', 'take', 'time', 'work', 'know', 'think', 'good', 'way', 'look', 'want'];
+            const availableDistractors = distractors
+              .filter(w => w !== correctWord && w.length >= correctWord.length - 1 && w.length <= correctWord.length + 1)
+              .slice(0, 3);
+
+            q.options = [...q.options, ...availableDistractors].sort(() => Math.random() - 0.5);
+          }
+
+          // 确保非拼写题有中文释义
+          if (!q.hints.translation && q.type !== 'choice' && (q as QuizQuestion).type !== 'spelling') {
+            // 如果没有中文释义，使用word本身
+            q.hints.translation = `${q.word}`;
+          }
+
+          // 简单题目：确保有prefix提示（拼写题除外）
+          if (q.difficulty === 'easy' && !q.hints.prefix && q.type === 'fill') {
+            q.hints.prefix = q.correctAnswer.slice(0, Math.min(3, q.correctAnswer.length));
+          }
+
+          // 中等题目：确保有首字母提示（拼写题除外）
+          if (q.difficulty === 'medium' && !q.hints.firstLetter && q.type === 'fill') {
+            q.hints.firstLetter = q.correctAnswer.charAt(0).toUpperCase();
+          }
+
+          return q;
+        });
+
+        return result;
       }
     } catch (error) {
       console.error('解析测验响应失败:', error);
@@ -429,6 +490,62 @@ ${selectedTypes}
       questions: [],
       totalScore: 100,
       timeLimit: 600,
+    };
+  }
+
+  // 判断翻译题答案是否正确
+  async checkTranslationAnswer(question: string, userAnswer: string, correctAnswer: string): Promise<{
+    isCorrect: boolean;
+    similarity: number; // 0-1 相似度
+    feedback: string;
+  }> {
+    const response = await this.chat([
+      {
+        role: 'system',
+        content: `你是一个专业的英语教师，负责判断学生的翻译答案是否正确。
+
+请以JSON格式返回：
+{
+  "isCorrect": true/false,
+  "similarity": 0.0-1.0,
+  "feedback": "简短的反馈（20字以内）"
+}
+
+判断标准：
+1. isCorrect: 核心意思对就算对，不要因为表达方式不同就判错
+2. similarity: 与标准答案的相似度（0.0-1.0），意思对但表达不同给0.7-0.9
+3. feedback: 简短鼓励或指出问题
+
+只返回JSON，不要其他内容。`
+      },
+      {
+        role: 'user',
+        content: `题目：${question}
+标准答案：${correctAnswer}
+学生答案：${userAnswer}
+
+请判断学生答案是否正确。`
+      },
+    ]);
+
+    try {
+      const jsonMatch = response.content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+    } catch (error) {
+      console.error('解析翻译判断响应失败:', error);
+    }
+
+    // 降级：简单的字符串匹配
+    const normalizedUser = userAnswer.trim().toLowerCase();
+    const normalizedCorrect = correctAnswer.trim().toLowerCase();
+    const similarity = normalizedUser === normalizedCorrect ? 1.0 : 0.5;
+
+    return {
+      isCorrect: similarity >= 0.7,
+      similarity,
+      feedback: similarity >= 0.7 ? '回答正确！' : '意思接近，但表达有待改进'
     };
   }
 

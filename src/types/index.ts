@@ -82,6 +82,8 @@ export interface ShortcutSettings {
   markUnknown: string;     // 标记不认识
   playAudio: string;       // 播放发音
   showAIAnalysis: string;  // 显示AI分析
+  // 测验界面
+  nextQuestion: string;    // 下一题
   // 复习界面额外快捷键
   rateEasy: string;        // 评分：简单
   rateGood: string;        // 评分：一般
@@ -98,11 +100,12 @@ export const defaultShortcuts: ShortcutSettings = {
   markUnknown: 'KeyA',
   playAudio: 'KeyR',
   showAIAnalysis: 'KeyW',
+  nextQuestion: 'Space',
   rateEasy: 'Digit1',
   rateGood: 'Digit2',
   rateHard: 'Digit3',
   rateAgain: 'Digit4',
-  toggleFloating: 'KeyF',
+  toggleFloating: 'Alt+KeyX',  // 悬浮窗切换快捷键
 };
 
 export enum StudyMode {

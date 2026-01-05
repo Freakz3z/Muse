@@ -13,6 +13,29 @@ const quizStore = localforage.createInstance({ name: 'muse', storeName: 'quiz' }
 const sessionStore = localforage.createInstance({ name: 'muse', storeName: 'session' });
 const studyPlanStore = localforage.createInstance({ name: 'muse', storeName: 'studyPlan' });
 
+// 跨窗口同步机制：使用 localStorage 作为事件触发器
+const SYNC_KEY = 'muse_sync_timestamp';
+let syncTimeout: NodeJS.Timeout | null = null;
+
+export const triggerSync = () => {
+  // 使用防抖避免频繁触发
+  if (syncTimeout) clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(() => {
+    const timestamp = Date.now();
+    localStorage.setItem(SYNC_KEY, timestamp.toString());
+  }, 100);
+};
+
+export const onSync = (callback: () => void) => {
+  const handler = (e: StorageEvent) => {
+    if (e.key === SYNC_KEY && e.newValue) {
+      callback();
+    }
+  };
+  window.addEventListener('storage', handler);
+  return () => window.removeEventListener('storage', handler);
+};
+
 // 单词操作
 export const wordStorage = {
   async getAll(): Promise<Word[]> {

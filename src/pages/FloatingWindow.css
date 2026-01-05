@@ -1,0 +1,17 @@
+/* 悬浮窗拖拽样式 */
+.floating-drag-region {
+  -webkit-app-region: drag;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.floating-no-drag {
+  -webkit-app-region: no-drag;
+}
+
+/* 整个标题栏可拖拽，三个点只是装饰 */
+.floating-title-bar {
+  -webkit-app-region: drag;
+  -webkit-user-select: none;
+  user-select: none;
+}

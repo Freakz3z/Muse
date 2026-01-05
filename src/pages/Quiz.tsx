@@ -1,20 +1,21 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Check, 
-  X, 
+import {
+  Check,
+  X,
   Trophy,
   RefreshCw,
   Keyboard
 } from 'lucide-react'
 import { useAppStore } from '../store'
 import { Word } from '../types'
+import { defaultShortcuts } from '../types'
 import ProgressBar from '../components/ProgressBar'
 
 type QuizMode = 'choice' | 'spelling'
 
 export default function Quiz() {
-  const { words, records } = useAppStore()
+  const { words, records, settings } = useAppStore()
   
   const [mode, setMode] = useState<QuizMode | null>(null)
   const [quizWords, setQuizWords] = useState<Word[]>([])
@@ -237,8 +238,20 @@ export default function Quiz() {
   }
 
   // 测验进行中界面
+  // 获取下一题的快捷键设置
+  const nextQuestionShortcut = settings.shortcuts?.nextQuestion || defaultShortcuts.nextQuestion
+
   return (
-    <div className="max-w-2xl mx-auto">
+    <div
+      className="max-w-2xl mx-auto"
+      onKeyDown={(e) => {
+        if (e.code === nextQuestionShortcut && showResult) {
+          e.preventDefault()
+          goToNext()
+        }
+      }}
+      tabIndex={0}
+    >
       {/* 进度和分数 */}
       <div className="flex items-center justify-between mb-6">
         <div className="text-gray-500 text-sm">
@@ -312,15 +325,22 @@ export default function Quiz() {
             // 拼写题模式
             <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
               <div className="p-8 text-center border-b bg-gradient-to-br from-purple-50 to-pink-50">
-                <p className="text-gray-500 mb-2">请根据释义拼写单词</p>
-                <h2 className="text-2xl font-bold text-gray-800">
-                  {currentWord.meanings[0]?.translation}
-                </h2>
-                <p className="text-gray-400 text-sm mt-2">
-                  ({currentWord.meanings[0]?.partOfSpeech})
-                </p>
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                    拼写题
+                  </span>
+                </div>
+                <p className="text-gray-500 mb-4">请根据下面的中文释义拼写正确的英文单词</p>
+                <div className="bg-white rounded-xl p-6 shadow-sm mb-4">
+                  <h2 className="text-3xl font-bold text-gray-800 mb-2">
+                    {currentWord.meanings[0]?.translation}
+                  </h2>
+                  <p className="text-gray-400">
+                    词性：{currentWord.meanings[0]?.partOfSpeech}
+                  </p>
+                </div>
               </div>
-              
+
               <div className="p-6">
                 <div className="relative">
                   <input
@@ -333,7 +353,7 @@ export default function Quiz() {
                       }
                     }}
                     disabled={showResult}
-                    placeholder="输入单词..."
+                    placeholder="在此输入单词..."
                     className={`w-full py-4 px-6 text-2xl text-center border-2 rounded-xl outline-none transition-colors ${
                       showResult
                         ? isCorrect
@@ -342,7 +362,7 @@ export default function Quiz() {
                         : 'border-gray-200 focus:border-purple-400'
                     }`}
                   />
-                  
+
                   {showResult && !isCorrect && (
                     <p className="mt-3 text-center text-green-600 font-medium">
                       正确答案: {currentWord.word}
@@ -356,7 +376,7 @@ export default function Quiz() {
                     disabled={!inputValue.trim()}
                     className="w-full mt-4 py-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-medium hover:shadow-lg transition-shadow disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    确认
+                    确认答案
                   </button>
                 )}
               </div>

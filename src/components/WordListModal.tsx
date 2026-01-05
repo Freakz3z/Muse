@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  X, 
-  Volume2, 
-  Search, 
+import {
+  X,
+  Volume2,
+  Search,
   Trash2,
   BookOpen,
   ChevronDown,
@@ -12,6 +12,7 @@ import {
 import { Word, WordBook } from '../types'
 import { wordStorage } from '../storage'
 import { useAppStore } from '../store'
+import { voiceService } from '../services/voice'
 
 interface WordListModalProps {
   isOpen: boolean
@@ -35,9 +36,16 @@ export default function WordListModal({ isOpen, onClose, book: initialBook }: Wo
     }
   }, [isOpen, book?.id]) // 仅在 ID 变化或打开时重新加载
 
+  // 监听词库 wordIds 变化，实时更新单词列表
+  useEffect(() => {
+    if (isOpen && book) {
+      loadWordsForBook()
+    }
+  }, [book?.wordIds]) // 当 wordIds 变化时重新加载
+
   const loadWordsForBook = async () => {
     if (!book) return
-    
+
     setIsLoading(true)
     try {
       const wordList = await wordStorage.getByIds(book.wordIds)
@@ -49,11 +57,12 @@ export default function WordListModal({ isOpen, onClose, book: initialBook }: Wo
     }
   }
 
-  const playAudio = (word: string) => {
-    const utterance = new SpeechSynthesisUtterance(word)
-    utterance.lang = 'en-US'
-    utterance.rate = 0.9
-    speechSynthesis.speak(utterance)
+  const playAudio = async (word: string) => {
+    try {
+      await voiceService.play(word, 'us')
+    } catch (error) {
+      console.error('Audio playback failed:', error)
+    }
   }
 
   const handleRemoveWord = async (wordId: string) => {

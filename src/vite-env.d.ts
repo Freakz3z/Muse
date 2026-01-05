@@ -41,6 +41,27 @@ declare global {
       getWindowState: () => Promise<{ isMaximized: boolean }>
       onMaximizeChange: (callback: (isMaximized: boolean) => void) => void
       openExternal: (url: string) => void
+      // 悬浮窗控制
+      hideFloatingWindow: () => void
+      showFloatingWindow: () => void
+      toggleFloatingWindow: () => void
+      notifyDataUpdated: () => void
+      onDataUpdated: (callback: () => void) => void
+      // 快捷键管理
+      updateFloatingShortcut: (shortcut: string) => void
+      getFloatingShortcut: () => Promise<string>
+      // 更新检查
+      checkForUpdate: () => Promise<{
+        hasUpdate: boolean
+        currentVersion: string
+        latestVersion?: string
+        downloadUrl?: string
+        notes?: string
+      }>
+      openDownloadPage: (url: string) => void
+      onUpdateAvailable: (callback: (updateInfo: any) => void) => void
     }
+    // 全局检查更新函数
+    checkForUpdate?: () => Promise<void>
   }
 }

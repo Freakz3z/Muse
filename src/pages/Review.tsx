@@ -13,6 +13,7 @@ import { Word } from '../types'
 import ProgressBar from '../components/ProgressBar'
 import { getQualityFromResponse } from '../utils/spaced-repetition'
 import { useShortcuts, getShortcutDisplay } from '../hooks/useShortcuts'
+import { voiceService } from '../services/voice'
 
 type ReviewMode = 'smart' | 'quick'
 
@@ -90,14 +91,13 @@ export default function Review() {
     }
   }, [reviewMode])
 
-  const playAudio = useCallback(() => {
+  const playAudio = useCallback(async () => {
     if (!currentWord) return
-    // 取消当前正在播放的音频，防止重复播放
-    speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(currentWord.word)
-    utterance.lang = settings.pronunciation === 'us' ? 'en-US' : 'en-GB'
-    utterance.rate = 0.9
-    speechSynthesis.speak(utterance)
+    try {
+      await voiceService.play(currentWord.word, settings.pronunciation)
+    } catch (error) {
+      console.error('Audio playback failed:', error)
+    }
   }, [currentWord, settings.pronunciation])
 
   useEffect(() => {

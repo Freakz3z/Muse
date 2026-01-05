@@ -19,7 +19,8 @@ import {
   profileStorage,
   statsStorage,
   sessionStorage,
-  studyPlanStorage
+  studyPlanStorage,
+  triggerSync
 } from '../storage';
 import { calculateNextReview, calculateSM2 } from '../utils/spaced-repetition';
 import { initializeBuiltinData } from '../data/words';
@@ -36,6 +37,9 @@ interface AppState {
   todayStats: StudyStats;
   currentSession: StudySession | null;
   studyPlan: StudyPlan | null;
+
+  // 跨窗口同步 - 重新加载词库数据
+  syncBooks: () => Promise<void>;
   
   // 初始化
   initialize: () => Promise<void>;
@@ -241,9 +245,21 @@ export const useAppStore = create<AppState>((set, get) => ({
     const dueWordIds = new Set(dueRecords.map(r => r.wordId));
     const reviewWords = words.filter(w => dueWordIds.has(w.id));
 
-    // 如果发现有记录但找不到单词，说明可能是孤立记录，可以考虑清理（可选）
+    // 如果发现有记录但找不到单词，清理孤立记录
     if (reviewWords.length < dueRecords.length) {
-      console.warn(`发现 ${dueRecords.length - reviewWords.length} 条孤立的学习记录`);
+      const foundWordIds = new Set(reviewWords.map(w => w.id));
+      const orphanRecords = dueRecords.filter(r => !foundWordIds.has(r.wordId));
+
+      console.warn(`发现 ${orphanRecords.length} 条孤立的学习记录，正在清理...`);
+
+      // 清理孤立记录
+      for (const record of orphanRecords) {
+        await recordStorage.delete(record.wordId);
+        records.delete(record.wordId);
+      }
+
+      // 更新 records 状态
+      set({ records });
     }
 
     return reviewWords;
@@ -261,6 +277,23 @@ export const useAppStore = create<AppState>((set, get) => ({
     // 获取所有有学习记录的单词
     const learnedWordIds = new Set(records.keys());
     const learnedWords = words.filter(w => learnedWordIds.has(w.id));
+
+    // 清理孤立记录
+    if (learnedWords.length < learnedWordIds.size) {
+      const foundWordIds = new Set(learnedWords.map(w => w.id));
+      const orphanRecordIds = Array.from(learnedWordIds).filter(id => !foundWordIds.has(id));
+
+      console.warn(`发现 ${orphanRecordIds.length} 条孤立的学习记录，正在清理...`);
+
+      // 清理孤立记录
+      for (const wordId of orphanRecordIds) {
+        await recordStorage.delete(wordId);
+        records.delete(wordId);
+      }
+
+      // 更新 records 状态
+      set({ records });
+    }
 
     return learnedWords;
   },
@@ -325,26 +358,40 @@ export const useAppStore = create<AppState>((set, get) => ({
   addWordToBook: async (bookId, wordId) => {
     const book = await bookStorage.getById(bookId);
     if (book && !book.wordIds.includes(wordId)) {
-      book.wordIds.push(wordId);
-      book.wordCount = book.wordIds.length;
-      await bookStorage.save(book);
+      // 创建新数组而不是修改原数组，确保 React 能检测到变化
+      const newWordIds = [...book.wordIds, wordId];
+      const updatedBook = {
+        ...book,
+        wordIds: newWordIds,
+        wordCount: newWordIds.length,
+      };
+      await bookStorage.save(updatedBook);
       set((state) => ({
-        books: state.books.map(b => b.id === bookId ? book : b),
-        currentBook: state.currentBook?.id === bookId ? book : state.currentBook,
+        books: state.books.map(b => b.id === bookId ? updatedBook : b),
+        currentBook: state.currentBook?.id === bookId ? updatedBook : state.currentBook,
       }));
+      // 触发跨窗口同步
+      triggerSync();
     }
   },
 
   removeWordFromBook: async (bookId, wordId) => {
     const book = await bookStorage.getById(bookId);
     if (book) {
-      book.wordIds = book.wordIds.filter(id => id !== wordId);
-      book.wordCount = book.wordIds.length;
-      await bookStorage.save(book);
+      // 创建新数组而不是修改原数组，确保 React 能检测到变化
+      const newWordIds = book.wordIds.filter(id => id !== wordId);
+      const updatedBook = {
+        ...book,
+        wordIds: newWordIds,
+        wordCount: newWordIds.length,
+      };
+      await bookStorage.save(updatedBook);
       set((state) => ({
-        books: state.books.map(b => b.id === bookId ? book : b),
-        currentBook: state.currentBook?.id === bookId ? book : state.currentBook,
+        books: state.books.map(b => b.id === bookId ? updatedBook : b),
+        currentBook: state.currentBook?.id === bookId ? updatedBook : state.currentBook,
       }));
+      // 触发跨窗口同步
+      triggerSync();
     }
   },
   
@@ -540,5 +587,22 @@ export const useAppStore = create<AppState>((set, get) => ({
     };
     await studyPlanStorage.save(updatedPlan);
     set({ studyPlan: updatedPlan });
+  },
+
+  // 跨窗口同步：从存储重新加载词库数据
+  syncBooks: async () => {
+    const books = await bookStorage.getAll();
+    const updatedBooks = books.map(book => ({
+      ...book,
+      wordCount: book.wordIds.length
+    }));
+
+    const currentBookId = get().currentBook?.id;
+    const newCurrentBook = updatedBooks.find(b => b.id === currentBookId) || updatedBooks[0] || null;
+
+    set({
+      books: updatedBooks,
+      currentBook: newCurrentBook
+    });
   },
 }));

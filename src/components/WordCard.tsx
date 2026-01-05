@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Volume2, Sparkles, Loader2, BookOpen, Lightbulb, Link, Brain } from 'lucide-react'
 import { Word } from '../types'
 import { aiService } from '../services/ai'
+import { voiceService } from '../services/voice'
 
 interface WordCardProps {
   word: Word
@@ -27,14 +28,13 @@ export default function WordCard({
     onFlip?.()
   }
 
-  const playAudio = (e: React.MouseEvent) => {
+  const playAudio = async (e: React.MouseEvent) => {
     e.stopPropagation()
-    // 取消当前正在播放的音频，防止重复播放
-    speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(word.word)
-    utterance.lang = pronunciation === 'us' ? 'en-US' : 'en-GB'
-    utterance.rate = 0.85
-    speechSynthesis.speak(utterance)
+    try {
+      await voiceService.play(word.word, pronunciation)
+    } catch (error) {
+      console.error('Audio playback failed:', error)
+    }
   }
 
   const handleAIGenerate = async (e: React.MouseEvent) => {

@@ -27,6 +27,7 @@ import { aiService } from '../services/ai'
 import { dictionaryService } from '../services/dictionary'
 import { GeneratedExample, WordMeaningExplanation, AIConfig, defaultAIConfig } from '../services/ai/types'
 import { Link } from 'react-router-dom'
+import { voiceService } from '../services/voice'
 
 // 获取AI配置
 const getAIConfig = (): AIConfig => {
@@ -170,14 +171,13 @@ export default function Learn() {
     }
   }, [isViewingHistory])
 
-  const playAudio = useCallback(() => {
+  const playAudio = useCallback(async () => {
     if (!displayWord) return
-    // 取消当前正在播放的音频，防止重复播放
-    speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(displayWord.word)
-    utterance.lang = settings.pronunciation === 'us' ? 'en-US' : 'en-GB'
-    utterance.rate = 0.9
-    speechSynthesis.speak(utterance)
+    try {
+      await voiceService.play(displayWord.word, settings.pronunciation)
+    } catch (error) {
+      console.error('Audio playback failed:', error)
+    }
   }, [displayWord, settings.pronunciation])
 
   useEffect(() => {
@@ -195,14 +195,14 @@ export default function Learn() {
 
   // 检查单词数据是否完整
   const isWordDataIncomplete = useCallback((word: Word): boolean => {
-    const hasValidTranslation = word.meanings.some(m => 
-      m.translation && 
-      m.translation !== '待补充' && 
+    const hasValidTranslation = word.meanings.some(m =>
+      m.translation &&
+      m.translation !== '待补充' &&
       m.translation !== '待翻译' &&
       /[\u4e00-\u9fa5]/.test(m.translation) // 包含中文字符
     )
-    const hasValidPartOfSpeech = word.meanings.some(m => 
-      m.partOfSpeech && 
+    const hasValidPartOfSpeech = word.meanings.some(m =>
+      m.partOfSpeech &&
       m.partOfSpeech !== 'unknown'
     )
     return !hasValidTranslation || !hasValidPartOfSpeech
@@ -252,6 +252,13 @@ export default function Learn() {
       setIsLoadingAI(false)
     }
   }, [displayWord, displayIndex, isWordDataIncomplete])
+
+  // 自动加载 AI 内容（如果启用）
+  useEffect(() => {
+    if (displayWord && showAnswer && settings.enableAIAnalysis && !showAIAnalysis && !isLoadingAI && !isViewingHistory) {
+      loadAIContent()
+    }
+  }, [displayWord, showAnswer, settings.enableAIAnalysis, showAIAnalysis, isLoadingAI, isViewingHistory, loadAIContent])
 
   // 快捷键处理显示AI分析
   const handleShortcutAIAnalysis = useCallback(() => {
