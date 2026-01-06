@@ -16,6 +16,7 @@ import { defaultShortcuts } from '../types'
 import ProgressBar from '../components/ProgressBar'
 import { getProfileManager } from '../services/ai-core'
 import { personalizedContentLoader } from '../utils/personalized-content-helper'
+import { selectQuizWords, getSelectionReasons } from '../utils/smart-word-selector'
 import type { GeneratedMemoryTip } from '../types/personalized-content'
 
 type QuizMode = 'choice' | 'spelling'
@@ -84,29 +85,57 @@ export default function Quiz() {
   const startQuiz = (selectedMode: QuizMode) => {
     setMode(selectedMode)
 
-    // 从已学习的单词中选择测验词汇
-    const learnedWordIds = new Set(records.keys())
-    let availableWords = words.filter(w => learnedWordIds.has(w.id))
+    // 使用智能选择器选择测验词汇
+    // 70%复习词汇 + 30%新词（如果有）
+    const selected = selectQuizWords(words, records, {
+      count: 10,
+      maxReviewRatio: 0.7,
+      includeNewWords: true,
+    })
 
-    // 如果学习的词不够，补充一些未学习的
-    if (availableWords.length < 10) {
+    // 如果智能选择返回的词太少，补充随机词
+    let finalWords = selected
+    if (finalWords.length < 10) {
+      const learnedWordIds = new Set(records.keys())
+      const availableWords = words.filter(w => learnedWordIds.has(w.id))
       const unlearned = words.filter(w => !learnedWordIds.has(w.id))
-      availableWords = [...availableWords, ...unlearned.slice(0, 10 - availableWords.length)]
+      const remaining = 10 - finalWords.length
+
+      // 优先补充已学词
+      const additionalLearned = availableWords
+        .filter(w => !finalWords.some(fw => fw.id === w.id))
+        .sort(() => Math.random() - 0.5)
+        .slice(0, remaining)
+
+      finalWords = [...finalWords, ...additionalLearned]
+
+      // 如果还不够，补充新词
+      if (finalWords.length < 10) {
+        const additionalNew = unlearned
+          .filter(w => !finalWords.some(fw => fw.id === w.id))
+          .sort(() => Math.random() - 0.5)
+          .slice(0, 10 - finalWords.length)
+
+        finalWords = [...finalWords, ...additionalNew]
+      }
     }
 
-    // 随机选择10个单词
-    const shuffled = availableWords.sort(() => Math.random() - 0.5)
-    const selected = shuffled.slice(0, 10)
+    // 调试信息：打印选择原因
+    const reasons = getSelectionReasons(finalWords, records)
+    console.log('Quiz word selection:', Array.from(reasons.entries()).map(([id, reason]) => {
+      const word = finalWords.find(w => w.id === id)
+      return `${word?.word}: ${reason}`
+    }))
 
-    setQuizWords(selected)
+    setQuizWords(finalWords)
     setCurrentIndex(0)
     setScore(0)
     setQuizComplete(false)
     setStartTime(Date.now())
     setQuestionStartTime(Date.now()) // 初始化第一个问题开始时间
 
-    if (selectedMode === 'choice' && selected.length > 0) {
-      generateOptions(selected[0], selected)
+    if (selectedMode === 'choice' && finalWords.length > 0) {
+      generateOptions(finalWords[0], finalWords)
     }
   }
 
