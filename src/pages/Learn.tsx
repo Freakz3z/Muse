@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Volume2,
@@ -23,6 +23,7 @@ import ProgressBar from '../components/ProgressBar'
 import { getQualityFromResponse } from '../utils/spaced-repetition'
 import { presetWordLists } from '../data/words'
 import { useShortcuts, getShortcutDisplay } from '../hooks/useShortcuts'
+import { useTodayLearnedWords, loadTodayLearnedWords } from '../hooks/useTodayLearnedWords'
 import { aiService } from '../services/ai'
 import { dictionaryService } from '../services/dictionary'
 import { GeneratedExample as AIGeneratedExample, WordMeaningExplanation, AIConfig, defaultAIConfig } from '../services/ai/types'
@@ -38,36 +39,6 @@ import CoachInterventionCard from '../components/CoachIntervention'
 const getAIConfig = (): AIConfig => {
   const savedConfig = localStorage.getItem('ai_config')
   return savedConfig ? JSON.parse(savedConfig) : defaultAIConfig
-}
-
-// 获取今天的日期字符串
-const getTodayString = (): string => {
-  const now = new Date()
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-}
-
-// 今天学习记录的localStorage key
-const getTodayLearnedKey = (): string => `learned_words_${getTodayString()}`
-
-// 加载今天的学习记录
-const loadTodayLearnedWords = (): Map<string, { known: boolean; index: number }> => {
-  const key = getTodayLearnedKey()
-  const saved = localStorage.getItem(key)
-  if (!saved) return new Map()
-
-  try {
-    const data = JSON.parse(saved)
-    return new Map(Object.entries(data))
-  } catch {
-    return new Map()
-  }
-}
-
-// 保存今天的学习记录
-const saveTodayLearnedWords = (learnedWords: Map<string, { known: boolean; index: number }>) => {
-  const key = getTodayLearnedKey()
-  const data = Object.fromEntries(learnedWords.entries())
-  localStorage.setItem(key, JSON.stringify(data))
 }
 
 // 获取当前时段
@@ -111,15 +82,23 @@ const recordLearningEvent = async (
 export default function Learn() {
   const {
     currentBook,
-    getNewWords, 
-    updateRecord, 
-    updateTodayStats, 
+    getNewWords,
+    updateRecord,
+    updateTodayStats,
     todayStats,
     settings,
     startSession,
     endSession,
     recordWordResult
   } = useAppStore()
+
+  // 使用优化后的 hook 管理今天的学习记录
+  const {
+    getTodayLearned,
+    updateTodayLearned,
+    getTodayCount,
+    getTodayKnownCount,
+  } = useTodayLearnedWords()
 
   const [words, setWords] = useState<Word[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -158,7 +137,19 @@ export default function Learn() {
   const [sessionResponseTimes, setSessionResponseTimes] = useState<number[]>([])
   const [sessionStartTime, setSessionStartTime] = useState<number>(Date.now())
 
-  const currentWord = words[currentIndex]
+  // 使用 useMemo 优化当前单词的计算
+  const currentWord = useMemo(() => words[currentIndex], [words, currentIndex])
+
+  // 使用 useMemo 优化显示单词的计算
+  const displayWord = useMemo(() => {
+    if (viewingIndex !== null) {
+      return words[viewingIndex]
+    }
+    return currentWord
+  }, [viewingIndex, words, currentWord])
+
+  // 使用 useMemo 优化是否正在查看历史的判断
+  const isViewingHistory = useMemo(() => viewingIndex !== null, [viewingIndex])
 
   useEffect(() => {
     loadWords()
@@ -213,17 +204,17 @@ export default function Learn() {
     setTodayLearnedWords(learnedWords)
   }
 
-  // 判断当前是否在查看历史单词
-  const isViewingHistory = viewingIndex !== null
-  const displayWord = isViewingHistory ? words[viewingIndex] : currentWord
-  const displayIndex = isViewingHistory ? viewingIndex : currentIndex
+  // 使用 useMemo 优化的显示索引
+  const displayIndex = useMemo(() => {
+    return isViewingHistory ? viewingIndex! : currentIndex
+  }, [isViewingHistory, viewingIndex, currentIndex])
 
   // 当切换查看历史单词时，确保显示答案
   useEffect(() => {
     if (isViewingHistory && !showAnswer) {
       setShowAnswer(true)
     }
-  }, [isViewingHistory])
+  }, [isViewingHistory, showAnswer])
 
   const playAudio = useCallback(async () => {
     if (!displayWord) return
@@ -468,14 +459,11 @@ export default function Learn() {
       setLearnedWords(prev => {
         const newMap = new Map(prev)
         newMap.set(currentWord.id, { known: true, index: currentIndex })
-
-        // 保存到今天的学习记录
-        const todayLearned = loadTodayLearnedWords()
-        todayLearned.set(currentWord.id, { known: true, index: currentIndex })
-        saveTodayLearnedWords(todayLearned)
-
         return newMap
       })
+
+      // 使用优化的 hook 更新今天的学习记录
+      updateTodayLearned(currentWord.id, true, currentIndex)
 
       await updateTodayStats({
         newWords: todayStats.newWords + 1,
@@ -516,14 +504,11 @@ export default function Learn() {
       setLearnedWords(prev => {
         const newMap = new Map(prev)
         newMap.set(currentWord.id, { known: false, index: currentIndex })
-
-        // 保存到今天的学习记录
-        const todayLearned = loadTodayLearnedWords()
-        todayLearned.set(currentWord.id, { known: false, index: currentIndex })
-        saveTodayLearnedWords(todayLearned)
-
         return newMap
       })
+
+      // 使用优化的 hook 更新今天的学习记录
+      updateTodayLearned(currentWord.id, false, currentIndex)
 
       await updateTodayStats({
         newWords: todayStats.newWords + 1,
@@ -783,20 +768,16 @@ export default function Learn() {
             <ProgressBar current={displayIndex + 1} total={words.length} color="blue" />
           </div>
           {/* 已学单词列表按钮 */}
-          {(() => {
-            const todayLearned = loadTodayLearnedWords()
-            const todayCount = todayLearned.size
-            return todayCount > 0 ? (
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl shadow-sm border border-gray-200 hover:border-gray-300 hover:shadow transition-all text-sm"
-                title="今日已学单词列表"
-              >
-                <List className="w-4 h-4" />
-                <span className="font-medium">{todayCount}</span>
-              </button>
-            ) : null
-          })()}
+          {getTodayCount() > 0 && (
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl shadow-sm border border-gray-200 hover:border-gray-300 hover:shadow transition-all text-sm"
+              title="今日已学单词列表"
+            >
+              <List className="w-4 h-4" />
+              <span className="font-medium">{getTodayCount()}</span>
+            </button>
+          )}
         </div>
 
         {/* 返回当前学习按钮 + 历史模式提示 */}
@@ -1337,11 +1318,11 @@ export default function Learn() {
                 </button>
               </div>
 
-              {/* 单词列表 */}
+              {/* 单词列表 - 使用 useMemo 优化 */}
               <div className="relative flex-1 overflow-y-auto p-4 space-y-3">
-                {(() => {
+                {useMemo(() => {
                   // 合并今天所有学过的单词
-                  const todayLearned = loadTodayLearnedWords()
+                  const todayLearned = getTodayLearned()
                   const allLearnedEntries = Array.from(todayLearned.entries())
 
                   // 按学习顺序排序（index）
@@ -1398,7 +1379,7 @@ export default function Learn() {
                       </motion.button>
                     )
                   })
-                })()}
+                }, [getTodayLearned, words, todayLearnedWords, viewLearnedWord])}
               </div>
 
               {/* 侧边栏底部 - 统计信息 */}
@@ -1406,21 +1387,14 @@ export default function Learn() {
                 <div className="flex items-center justify-center gap-6">
                   <div className="text-center">
                     <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                      {(() => {
-                        const todayLearned = loadTodayLearnedWords()
-                        return todayLearned.size
-                      })()}
+                      {getTodayCount()}
                     </div>
                     <div className="text-xs text-gray-600 mt-1">今日学习</div>
                   </div>
                   <div className="w-px h-10 bg-gray-300/50" />
                   <div className="text-center">
                     <div className="text-2xl font-bold text-green-600">
-                      {(() => {
-                        const todayLearned = loadTodayLearnedWords()
-                        const knownCount = Array.from(todayLearned.values()).filter(w => w.known === true).length
-                        return knownCount
-                      })()}
+                      {getTodayKnownCount()}
                     </div>
                     <div className="text-xs text-gray-600 mt-1">已掌握</div>
                   </div>
