@@ -53,17 +53,36 @@ function parseChangelog(): VersionInfo[] {
       continue
     }
 
-    // 检查章节标题
-    if (trimmedLine.includes('### ✨ 新特性') || trimmedLine.includes('### 🎉 首次发布') || trimmedLine.includes('### ✨ 重大更新')) {
+    // 检查章节标题 - 统一归类为"功能新增"和"问题修复"两类
+    // 所有带冒号的中文标题都识别为新章节
+    // Bug相关标题归为fixes,其他归为features
+    if (trimmedLine.endsWith(':') && !trimmedLine.startsWith('##')) {
+      // 判断是否为Bug/修复相关章节
+      if (trimmedLine.includes('Bug') ||
+          trimmedLine.includes('修复') ||
+          trimmedLine.includes('问题') ||
+          trimmedLine.includes('已知')) {
+        currentSection = 'fixes'
+      } else {
+        currentSection = 'features'
+      }
+      continue
+    }
+
+    // 兼容旧格式
+    if (trimmedLine.includes('### ✨ 新特性') ||
+        trimmedLine.includes('### 🎉 首次发布') ||
+        trimmedLine.includes('### ✨ 重大更新')) {
       currentSection = 'features'
       continue
     }
-    if (trimmedLine.includes('### 🐛 Bug 修复') || trimmedLine.includes('### 🐞 修复')) {
+    if (trimmedLine.includes('### 🐛 Bug 修复') ||
+        trimmedLine.includes('### 🐞 修复')) {
       currentSection = 'fixes'
       continue
     }
     if (trimmedLine.includes('### 📝 已知问题')) {
-      currentSection = 'knownIssues'
+      currentSection = 'fixes' // 将已知问题也归入问题修复
       continue
     }
 
@@ -71,12 +90,40 @@ function parseChangelog(): VersionInfo[] {
     if (currentVersion && currentSection && trimmedLine.startsWith('-')) {
       const item = trimmedLine.substring(1).trim()
       if (item) {
-        if (currentSection === 'features') {
-          currentVersion.features.push(item)
+        // 简化长描述：只保留标题部分
+        // 支持多种分隔符: " - ", " — ", " – ", ": ", "："
+        let simplifiedItem = item
+
+        // 尝试各种分隔符
+        const separators = [' - ', ' — ', ' – ', ': ', '：']
+        for (const sep of separators) {
+          if (item.includes(sep)) {
+            simplifiedItem = item.split(sep)[0].trim()
+            break
+          }
+        }
+
+        // 如果没有找到分隔符,尝试截取前20个字符
+        if (simplifiedItem === item && item.length > 20) {
+          // 在第一个空格或逗号处截断
+          const breakIndex = item.indexOf(' ')
+          if (breakIndex > 10 && breakIndex < 30) {
+            simplifiedItem = item.substring(0, breakIndex).trim()
+          }
+        }
+
+        // 智能分类：根据条目内容本身判断是功能还是修复
+        // 即使章节标题不包含"修复"关键词,如果条目本身是修复类,也归入fixes
+        let targetSection = currentSection
+        const fixKeywords = ['修复', '修复', 'fix', 'fixing', 'bug', '除零', '防止']
+        const isFix = fixKeywords.some(keyword => simplifiedItem.toLowerCase().includes(keyword.toLowerCase()))
+
+        if (isFix) {
+          currentVersion.fixes.push(simplifiedItem)
+        } else if (currentSection === 'features') {
+          currentVersion.features.push(simplifiedItem)
         } else if (currentSection === 'fixes') {
-          currentVersion.fixes.push(item)
-        } else if (currentSection === 'knownIssues' && currentVersion.knownIssues) {
-          currentVersion.knownIssues.push(item)
+          currentVersion.fixes.push(simplifiedItem)
         }
       }
     }
@@ -327,7 +374,7 @@ export default function About() {
           <div className="flex-1 space-y-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-800 mb-2">Muse</h1>
-              <p className="text-gray-500">v1.6.1</p>
+              <p className="text-gray-500">v1.6.2</p>
             </div>
 
             <p className="text-gray-600 leading-relaxed">

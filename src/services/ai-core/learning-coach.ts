@@ -84,12 +84,13 @@ export class LearningCoach {
    */
   private checkFatigue(metrics: LearningSessionMetrics, _profile: AILearnerProfile): CoachIntervention | null {
     const sessionMinutes = metrics.sessionDuration / (1000 * 60)
-    const accuracy = metrics.correctCount / (metrics.correctCount + metrics.incorrectCount)
+    const totalAttempts = metrics.correctCount + metrics.incorrectCount
+    const accuracy = totalAttempts > 0 ? metrics.correctCount / totalAttempts : 1
     const avgResponseTimeSeconds = metrics.averageResponseTime / 1000
 
     // 疲劳指标
     const isLongSession = sessionMinutes > 25 // 超过25分钟
-    const isHighErrorRate = accuracy < 0.6 // 正确率低于60%
+    const isHighErrorRate = totalAttempts > 0 && accuracy < 0.6 // 正确率低于60%
     const isSlowResponse = avgResponseTimeSeconds > 5 // 平均反应时间超过5秒
     const isConsecutiveErrors = metrics.consecutiveIncorrect >= 3 // 连续错误3次
 
@@ -136,10 +137,11 @@ export class LearningCoach {
    * 检测困难模式 - 基于错误率、连续错误、特定词类型
    */
   private checkDifficulty(metrics: LearningSessionMetrics, _profile: AILearnerProfile): CoachIntervention | null {
-    const accuracy = metrics.correctCount / (metrics.correctCount + metrics.incorrectCount)
+    const totalAttempts = metrics.correctCount + metrics.incorrectCount
+    const accuracy = totalAttempts > 0 ? metrics.correctCount / totalAttempts : 1
 
     // 困难指标
-    const isLowAccuracy = accuracy < 0.5 // 整体正确率低于50%
+    const isLowAccuracy = totalAttempts > 0 && accuracy < 0.5 // 整体正确率低于50%
     const isHighRecentErrors = metrics.recentErrors >= 5 // 最近10个词错5个以上
     const isConsecutiveErrors = metrics.consecutiveIncorrect >= 4 // 连续错误4次
 
@@ -179,11 +181,12 @@ export class LearningCoach {
    * 检测心流状态 - 优化学习体验
    */
   private checkFlowState(metrics: LearningSessionMetrics, _profile: AILearnerProfile): CoachIntervention | null {
-    const accuracy = metrics.correctCount / (metrics.correctCount + metrics.incorrectCount)
+    const totalAttempts = metrics.correctCount + metrics.incorrectCount
+    const accuracy = totalAttempts > 0 ? metrics.correctCount / totalAttempts : 1
     const avgResponseTimeSeconds = metrics.averageResponseTime / 1000
 
     // 心流状态指标
-    const isOptimalAccuracy = accuracy >= 0.7 && accuracy <= 0.9 // 70-90%正确率
+    const isOptimalAccuracy = totalAttempts > 0 && accuracy >= 0.7 && accuracy <= 0.9 // 70-90%正确率
     const isOptimalPace = avgResponseTimeSeconds >= 1.5 && avgResponseTimeSeconds <= 4 // 1.5-4秒反应时间
     const isLongStreak = metrics.consecutiveCorrect >= 10 // 连续正确10次
 
@@ -219,7 +222,7 @@ export class LearningCoach {
    */
   private checkMotivation(metrics: LearningSessionMetrics, _profile: AILearnerProfile): CoachIntervention | null {
     const sessionMinutes = metrics.sessionDuration / (1000 * 60)
-    const wordsPerMinute = metrics.wordsLearned / (sessionMinutes || 1)
+    const wordsPerMinute = sessionMinutes > 0 ? metrics.wordsLearned / sessionMinutes : 0
 
     // 达成里程碑
     if (metrics.wordsLearned === 10) {

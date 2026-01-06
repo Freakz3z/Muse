@@ -49,6 +49,7 @@ export default function Settings() {
     markUnknown: '不认识 / 上一个',
     playAudio: '播放发音',
     showAIAnalysis: 'AI 智能分析',
+    showPersonalizedAI: '个性化 AI 内容',
     nextQuestion: '下一题',
     rateEasy: '太简单',
     rateGood: '记住了',
@@ -59,7 +60,7 @@ export default function Settings() {
 
   // 快捷键界面分组
   const shortcutGroups: Record<string, string[]> = {
-    learning: ['showAnswer', 'markKnown', 'markUnknown', 'playAudio', 'showAIAnalysis'],
+    learning: ['showAnswer', 'markKnown', 'markUnknown', 'playAudio', 'showAIAnalysis', 'showPersonalizedAI'],
     quiz: ['nextQuestion'],
     review: ['rateEasy', 'rateGood', 'rateHard', 'rateAgain'],
     global: ['toggleFloating'],
@@ -379,28 +380,6 @@ export default function Settings() {
               />
             </button>
           </div>
-
-          {/* AI 自动分析 */}
-          <div className="flex items-center justify-between p-4 rounded-xl border border-gray-200 bg-white">
-            <div className="flex items-center gap-3">
-              <Sparkles className="w-5 h-5 text-purple-400" />
-              <div>
-                <p className="font-medium text-gray-700">AI 智能分析</p>
-                <p className="text-gray-400 text-sm">学习时自动显示 AI 深度分析</p>
-              </div>
-            </div>
-            <button
-              onClick={() => updateSettings({ enableAIAnalysis: !settings.enableAIAnalysis })}
-              className={`w-12 h-6 rounded-full transition-colors ${
-                settings.enableAIAnalysis ? 'bg-purple-500' : 'bg-gray-300'
-              }`}
-            >
-              <motion.div
-                animate={{ x: settings.enableAIAnalysis ? 24 : 2 }}
-                className="w-5 h-5 bg-white rounded-full shadow"
-              />
-            </button>
-          </div>
         </div>
       </div>
 
@@ -507,6 +486,13 @@ export default function Settings() {
                       currentValue={settings.shortcuts?.showAIAnalysis || defaultShortcuts.showAIAnalysis}
                       isEditing={editingShortcut === 'showAIAnalysis'}
                       onEdit={() => setEditingShortcut('showAIAnalysis')}
+                      onCancel={() => setEditingShortcut(null)}
+                    />
+                    <ShortcutItem
+                      label="个性化 AI 内容"
+                      currentValue={settings.shortcuts?.showPersonalizedAI || defaultShortcuts.showPersonalizedAI}
+                      isEditing={editingShortcut === 'showPersonalizedAI'}
+                      onEdit={() => setEditingShortcut('showPersonalizedAI')}
                       onCancel={() => setEditingShortcut(null)}
                     />
                   </div>
