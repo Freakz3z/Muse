@@ -25,7 +25,7 @@
   <img src="https://img.shields.io/badge/React-18.2.0-61DAFB?logo=react" alt="React">
   <img src="https://img.shields.io/badge/TypeScript-5.3-3178C6?logo=typescript" alt="TypeScript">
   <img src="https://img.shields.io/badge/Vite-5.0-646CFF?logo=vite" alt="Vite">
-  <img src="https://img.shields.io/badge/Version-1.6.1-orange" alt="Version">
+  <img src="https://img.shields.io/badge/Version-1.6.2-blue" alt="Version">
   <img src="https://img.shields.io/badge/License-Apache_2.0-blue" alt="License">
 </p>
 
