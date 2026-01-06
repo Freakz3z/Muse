@@ -9,6 +9,7 @@ export { ProfileManager, getProfileManager } from './profile-manager';
 export { ProfileUpdater, getProfileUpdater } from './profile-updater';
 export { AdaptiveLearningEngine, adaptiveEngine } from './adaptive-learning-engine';
 export { PersonalizedContentGenerator, personalizedContentGenerator } from './personalized-content-generator';
+export { LearningCoach, getLearningCoach } from './learning-coach';
 
 // 重新导出核心类型
 export type {
@@ -38,3 +39,9 @@ export type {
   BatchContentRequest,
   ContentGeneratorConfig,
 } from '../../types/personalized-content';
+
+// 重新导出学习教练类型
+export type {
+  CoachIntervention,
+  LearningSessionMetrics,
+} from './learning-coach';

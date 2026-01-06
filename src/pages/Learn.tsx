@@ -28,9 +28,11 @@ import { dictionaryService } from '../services/dictionary'
 import { GeneratedExample as AIGeneratedExample, WordMeaningExplanation, AIConfig, defaultAIConfig } from '../services/ai/types'
 import { Link } from 'react-router-dom'
 import { voiceService } from '../services/voice'
-import { getProfileManager } from '../services/ai-core'
+import { getProfileManager, getLearningCoach } from '../services/ai-core'
 import { personalizedContentLoader } from '../utils/personalized-content-helper'
 import type { GeneratedExample, GeneratedMemoryTip, GeneratedExplanation } from '../types/personalized-content'
+import type { CoachIntervention, LearningSessionMetrics } from '../services/ai-core'
+import CoachInterventionCard from '../components/CoachIntervention'
 
 // 获取AI配置
 const getAIConfig = (): AIConfig => {
@@ -125,7 +127,6 @@ export default function Learn() {
   const [isLoading, setIsLoading] = useState(true)
   const [sessionComplete, setSessionComplete] = useState(false)
   const [startTime, setStartTime] = useState<number>(0)
-  const [sessionStartTime, setSessionStartTime] = useState<number>(0)
   const [correctCount, setCorrectCount] = useState(0)
   const [isProcessing, setIsProcessing] = useState(false)
   const isProcessingRef = useRef(false)
@@ -151,6 +152,11 @@ export default function Learn() {
   const [personalizedMemoryTip, setPersonalizedMemoryTip] = useState<GeneratedMemoryTip | null>(null)
   const [personalizedExplanation, setPersonalizedExplanation] = useState<GeneratedExplanation | null>(null)
   const [isLoadingPersonalized, setIsLoadingPersonalized] = useState(false)
+
+  // AI教练状态
+  const [coachIntervention, setCoachIntervention] = useState<CoachIntervention | null>(null)
+  const [sessionResponseTimes, setSessionResponseTimes] = useState<number[]>([])
+  const [sessionStartTime, setSessionStartTime] = useState<number>(Date.now())
 
   const currentWord = words[currentIndex]
 
@@ -188,6 +194,7 @@ export default function Learn() {
     setViewingIndex(null)
     setSidebarOpen(false)
     setSessionStartTime(Date.now())
+    setSessionResponseTimes([])
     if (newWords.length > 0 && currentBook) {
       startSession('learn', currentBook.id)
     }
@@ -383,6 +390,57 @@ export default function Learn() {
     }
   }, [showAnswer, isLoadingPersonalized, handlePersonalizedAIButton])
 
+  // AI教练检查函数
+  const checkLearningCoach = useCallback(async () => {
+    try {
+      const profileManager = getProfileManager()
+      const profile = await profileManager.getProfile()
+
+      if (!profile) return // 如果没有profile,跳过检查
+
+      const coach = getLearningCoach()
+
+      // 计算会话指标
+      const sessionDuration = Date.now() - sessionStartTime
+      const wordsLearned = correctCount + (learnedWords.size - correctCount)
+
+      // 计算连续正确/错误
+      let consecutiveCorrect = 0
+      let consecutiveIncorrect = 0
+      const learnedArray = Array.from(learnedWords.values()).reverse()
+
+      for (const item of learnedArray) {
+        if (item.known === true) {
+          consecutiveCorrect++
+          if (consecutiveIncorrect > 0) break
+        } else if (item.known === false) {
+          consecutiveIncorrect++
+          if (consecutiveCorrect > 0) break
+        }
+      }
+
+      const metrics: LearningSessionMetrics = {
+        sessionDuration,
+        wordsLearned,
+        correctCount,
+        incorrectCount: learnedWords.size - correctCount,
+        averageResponseTime: sessionResponseTimes.length > 0
+          ? sessionResponseTimes.reduce((a, b) => a + b, 0) / sessionResponseTimes.length
+          : 0,
+        recentErrors: Array.from(learnedWords.values()).slice(-10).filter(w => w.known === false).length,
+        consecutiveCorrect,
+        consecutiveIncorrect,
+      }
+
+      const intervention = coach.analyzeSession(metrics, profile)
+      if (intervention) {
+        setCoachIntervention(intervention)
+      }
+    } catch (error) {
+      console.error('Failed to check learning coach:', error)
+    }
+  }, [sessionStartTime, correctCount, learnedWords, sessionResponseTimes])
+
   const handleKnow = async () => {
     if (!currentWord || isProcessingRef.current) return
 
@@ -422,6 +480,10 @@ export default function Learn() {
       await updateTodayStats({
         newWords: todayStats.newWords + 1,
       })
+
+      // 记录响应时间并检查AI教练
+      setSessionResponseTimes(prev => [...prev, responseTime])
+      await checkLearningCoach()
 
       goToNext()
     } finally {
@@ -466,6 +528,9 @@ export default function Learn() {
       await updateTodayStats({
         newWords: todayStats.newWords + 1,
       })
+
+      // 记录响应时间(不认识的情况不记录响应时间)并检查AI教练
+      await checkLearningCoach()
 
       goToNext()
     } finally {
@@ -700,6 +765,18 @@ export default function Learn() {
     <div className="flex h-full">
       {/* 主内容区 */}
       <div className="flex-1 max-w-3xl mx-auto overflow-y-auto">
+        {/* AI教练干预提示 */}
+        <AnimatePresence>
+          {coachIntervention && (
+            <div className="mb-6">
+              <CoachInterventionCard
+                intervention={coachIntervention}
+                onDismiss={() => setCoachIntervention(null)}
+              />
+            </div>
+          )}
+        </AnimatePresence>
+
         {/* 顶部栏：进度条和侧边栏触发按钮 */}
         <div className="flex items-center gap-4 mb-6">
           <div className="flex-1">
