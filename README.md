@@ -299,3 +299,17 @@ Muse 使用经典的 SM-2 算法来优化复习时机:
 <p align="center">
   Made with ❤️ for English learners
 </p>
+
+<p align="center">
+  <!-- Share Badge -->
+  <a href="https://twitter.com/intent/tweet?text=Check%20out%20Muse%20-%20An%20AI-powered%20English%20vocabulary%20learning%20assistant%20%F0%9F%9A%80&url=https%3A%2F%2Fgithub.com%2FFreakz3z%2FMuse&hashtags=Muse,EnglishLearning,AI,Vocabulary">
+    <img src="https://img.shields.io/badge/Share-%23Twitter-blue?style=for-the-badge&logo=twitter" alt="Share on Twitter">
+  </a>
+</p>
+
+<p align="center">
+  <!-- Star History -->
+  <a href="https://star-history.com/#Freakz3z/Muse&Date">
+    <img src="https://api.star-history.com/svg?repos=Freakz3z/Muse&type=Date" alt="Star History Chart">
+  </a>
+</p>

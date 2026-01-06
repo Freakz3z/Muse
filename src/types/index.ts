@@ -77,20 +77,21 @@ export interface UserSettings {
 // 快捷键设置
 export interface ShortcutSettings {
   // 学习/复习界面
-  showAnswer: string;      // 显示答案
-  markKnown: string;       // 标记认识
-  markUnknown: string;     // 标记不认识
-  playAudio: string;       // 播放发音
-  showAIAnalysis: string;  // 显示AI分析
+  showAnswer: string;         // 显示答案
+  markKnown: string;          // 标记认识
+  markUnknown: string;        // 标记不认识
+  playAudio: string;          // 播放发音
+  showAIAnalysis: string;     // 显示通用AI分析 (W键)
+  showPersonalizedAI: string; // 显示个性化AI内容 (E键)
   // 测验界面
-  nextQuestion: string;    // 下一题
+  nextQuestion: string;       // 下一题
   // 复习界面额外快捷键
-  rateEasy: string;        // 评分：简单
-  rateGood: string;        // 评分：一般
-  rateHard: string;        // 评分：困难
-  rateAgain: string;       // 评分：重来
+  rateEasy: string;           // 评分：简单
+  rateGood: string;           // 评分：一般
+  rateHard: string;           // 评分：困难
+  rateAgain: string;          // 评分：重来
   // 全局快捷键
-  toggleFloating: string;  // 切换悬浮窗
+  toggleFloating: string;     // 切换悬浮窗
 }
 
 // 默认快捷键
@@ -100,6 +101,7 @@ export const defaultShortcuts: ShortcutSettings = {
   markUnknown: 'KeyA',
   playAudio: 'KeyR',
   showAIAnalysis: 'KeyW',
+  showPersonalizedAI: 'KeyE',
   nextQuestion: 'Space',
   rateEasy: 'Digit1',
   rateGood: 'Digit2',

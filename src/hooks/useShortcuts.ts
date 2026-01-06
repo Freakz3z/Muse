@@ -115,6 +115,7 @@ interface ShortcutHandlers {
   markUnknown?: () => void
   playAudio?: () => void
   showAIAnalysis?: () => void
+  showPersonalizedAI?: () => void
   rateEasy?: () => void
   rateGood?: () => void
   rateHard?: () => void
@@ -177,6 +178,9 @@ export function useShortcuts(handlers: ShortcutHandlers, enabled: boolean = true
       } else if (matchShortcut(currentShortcuts.showAIAnalysis, e) && currentHandlers.showAIAnalysis) {
         e.preventDefault()
         currentHandlers.showAIAnalysis()
+      } else if (matchShortcut(currentShortcuts.showPersonalizedAI, e) && currentHandlers.showPersonalizedAI) {
+        e.preventDefault()
+        currentHandlers.showPersonalizedAI()
       } else if (matchShortcut(currentShortcuts.rateEasy, e) && currentHandlers.rateEasy) {
         e.preventDefault()
         currentHandlers.rateEasy()

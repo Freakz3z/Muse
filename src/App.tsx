@@ -16,7 +16,10 @@ import Settings from './pages/Settings'
 import About from './pages/About'
 import AIQuiz from './pages/AIQuiz'
 import SearchPage from './pages/SearchPage'
+import AIProfile from './pages/AIProfile'
 import FloatingWindow from './pages/FloatingWindow'
+import TestAdaptiveEngine from './pages/TestAdaptiveEngine'
+import TestContentGenerator from './pages/TestContentGenerator'
 import SplashScreen from './components/SplashScreen'
 
 const logger = createLogger('App')
@@ -115,6 +118,9 @@ function App() {
             <Route path="search" element={<SearchPage />} />
             <Route path="wordbook" element={<WordBook />} />
             <Route path="statistics" element={<Statistics />} />
+            <Route path="ai-profile" element={<AIProfile />} />
+            <Route path="test-adaptive" element={<TestAdaptiveEngine />} />
+            <Route path="test-content" element={<TestContentGenerator />} />
             <Route path="settings" element={<Settings />} />
             <Route path="about" element={<About />} />
           </Route>

@@ -1,6 +1,6 @@
 import localforage from 'localforage';
 import { Word, LearningRecord, WordBook, UserSettings, StudyStats, UserProfile, QuizResult, StudySession, defaultShortcuts } from '../types';
-import { StudyPlan } from '../services/ai/types';
+import { LearningEvent } from '../types/learner-profile';
 
 // 初始化存储实例
 const wordsStore = localforage.createInstance({ name: 'muse', storeName: 'words' });
@@ -11,7 +11,7 @@ const statsStore = localforage.createInstance({ name: 'muse', storeName: 'stats'
 const profileStore = localforage.createInstance({ name: 'muse', storeName: 'profile' });
 const quizStore = localforage.createInstance({ name: 'muse', storeName: 'quiz' });
 const sessionStore = localforage.createInstance({ name: 'muse', storeName: 'session' });
-const studyPlanStore = localforage.createInstance({ name: 'muse', storeName: 'studyPlan' });
+const learningEventsStore = localforage.createInstance({ name: 'muse', storeName: 'learningEvents' });
 
 // 跨窗口同步机制：使用 localStorage 作为事件触发器
 const SYNC_KEY = 'muse_sync_timestamp';
@@ -325,17 +325,70 @@ export const sessionStorage = {
   },
 };
 
-// 学习计划操作
-export const studyPlanStorage = {
-  async getActive(): Promise<StudyPlan | null> {
-    return await studyPlanStore.getItem('active');
+// 学习事件操作 - 用于AI自适应学习引擎
+export const learningEventsStorage = {
+  /**
+   * 添加学习事件
+   */
+  async addEvent(event: LearningEvent): Promise<void> {
+    const eventId = `${event.wordId}_${event.timestamp}`;
+    await learningEventsStore.setItem(eventId, event);
   },
 
-  async save(plan: StudyPlan): Promise<void> {
-    await studyPlanStore.setItem('active', plan);
+  /**
+   * 获取某个单词的学习历史
+   */
+  async getWordHistory(wordId: string): Promise<LearningEvent[]> {
+    const events: LearningEvent[] = [];
+    await learningEventsStore.iterate<LearningEvent, void>((value) => {
+      if (value.wordId === wordId) {
+        events.push(value);
+      }
+    });
+    // 按时间排序
+    return events.sort((a, b) => a.timestamp - b.timestamp);
   },
 
-  async delete(): Promise<void> {
-    await studyPlanStore.removeItem('active');
+  /**
+   * 获取最近的学习事件（用于画像更新）
+   */
+  async getRecentEvents(limit: number = 100): Promise<LearningEvent[]> {
+    const events: LearningEvent[] = [];
+    await learningEventsStore.iterate<LearningEvent, void>((value) => {
+      events.push(value);
+    });
+    // 按时间倒序，取最近的
+    return events
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, limit);
+  },
+
+  /**
+   * 清理旧的学习事件（保留最近N天）
+   */
+  async cleanupOldEvents(daysToKeep: number = 90): Promise<void> {
+    const cutoffTime = Date.now() - (daysToKeep * 24 * 60 * 60 * 1000);
+    const keysToDelete: string[] = [];
+
+    await learningEventsStore.iterate<LearningEvent, void>((value, key) => {
+      if (value.timestamp < cutoffTime) {
+        keysToDelete.push(key as string);
+      }
+    });
+
+    for (const key of keysToDelete) {
+      await learningEventsStore.removeItem(key);
+    }
+  },
+
+  /**
+   * 获取学习事件总数
+   */
+  async getCount(): Promise<number> {
+    let count = 0;
+    await learningEventsStore.iterate(() => {
+      count++;
+    });
+    return count;
   },
 };

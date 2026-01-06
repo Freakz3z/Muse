@@ -1,6 +1,10 @@
 // SM-2 间隔重复算法实现
 // 基于艾宾浩斯记忆曲线
 
+import { adaptiveEngine } from '../services/ai-core';
+import type { AdaptiveReviewPlan } from '../services/ai-core/adaptive-learning-engine';
+import { getProfileManager } from '../services/ai-core';
+
 /**
  * 计算 SM-2 算法的下次复习参数
  * @param easeFactor 当前易度因子 (EF)
@@ -152,4 +156,231 @@ export function getRecommendedNewWords(reviewCount: number, dailyGoal: number): 
   const effectiveReviewCount = Math.round(reviewCount * reviewWeight);
   const remaining = Math.max(0, dailyGoal - effectiveReviewCount);
   return remaining;
+}
+
+// ==================== AI自适应学习引擎集成 ====================
+
+/**
+ * 配置AI自适应引擎
+ */
+export interface AdaptiveConfig {
+  enableAI: boolean;          // 是否启用AI预测
+  fallbackToSM2: boolean;      // AI失败时回退到SM-2
+  minInterval: number;         // 最小复习间隔（小时）
+  maxInterval: number;         // 最大复习间隔（小时）
+}
+
+const DEFAULT_ADAPTIVE_CONFIG: AdaptiveConfig = {
+  enableAI: true,
+  fallbackToSM2: true,
+  minInterval: 1,      // 1小时
+  maxInterval: 720,    // 30天
+};
+
+let adaptiveConfig: AdaptiveConfig = { ...DEFAULT_ADAPTIVE_CONFIG };
+
+/**
+ * 更新AI自适应引擎配置
+ */
+export function updateAdaptiveConfig(config: Partial<AdaptiveConfig>) {
+  adaptiveConfig = { ...adaptiveConfig, ...config };
+  adaptiveEngine.updateConfig({
+    enableAIPrediction: adaptiveConfig.enableAI,
+    fallbackToSM2: adaptiveConfig.fallbackToSM2,
+    minInterval: adaptiveConfig.minInterval,
+    maxInterval: adaptiveConfig.maxInterval
+  });
+}
+
+/**
+ * 获取当前配置
+ */
+export function getAdaptiveConfig(): AdaptiveConfig {
+  return { ...adaptiveConfig };
+}
+
+/**
+ * 使用AI自适应引擎计算下次复习时间
+ *
+ * 这是替代SM-2算法的核心函数
+ *
+ * @param wordId 单词ID
+ * @param wordHistory 该单词的学习历史
+ * @returns 个性化复习计划
+ */
+export async function calculateAdaptiveNextReview(
+  wordId: string,
+  wordHistory: Array<{
+    action: 'learn' | 'review' | 'quiz';
+    result: 'correct' | 'incorrect' | 'partial';
+    timestamp: number;
+    timeTaken: number;
+    confidence: number;
+  }>
+): Promise<AdaptiveReviewPlan> {
+  // 如果未启用AI，回退到SM-2
+  if (!adaptiveConfig.enableAI) {
+    return convertSM2ToAdaptive(wordId, wordHistory);
+  }
+
+  try {
+    // 获取用户画像
+    const profileManager = getProfileManager();
+    const profile = profileManager.getProfile();
+
+    if (!profile) {
+      // 没有画像数据，回退到SM-2
+      return convertSM2ToAdaptive(wordId, wordHistory);
+    }
+
+    // 转换历史数据格式
+    const learningEvents = convertHistoryToEvents(wordId, wordHistory);
+
+    // 使用AI自适应引擎预测
+    return await adaptiveEngine.calculateNextReview(wordId, profile, learningEvents);
+  } catch (error) {
+    console.error('AI自适应预测失败:', error);
+    if (adaptiveConfig.fallbackToSM2) {
+      return convertSM2ToAdaptive(wordId, wordHistory);
+    }
+    throw error;
+  }
+}
+
+/**
+ * 批量计算多个单词的复习计划（更高效）
+ */
+export async function calculateAdaptiveBatch(
+  items: Array<{
+    wordId: string;
+    history: Array<{
+      action: 'learn' | 'review' | 'quiz';
+      result: 'correct' | 'incorrect' | 'partial';
+      timestamp: number;
+      timeTaken: number;
+      confidence: number;
+    }>;
+  }>
+): Promise<AdaptiveReviewPlan[]> {
+  if (!adaptiveConfig.enableAI) {
+    return items.map(item => convertSM2ToAdaptive(item.wordId, item.history));
+  }
+
+  try {
+    const profileManager = getProfileManager();
+    const profile = profileManager.getProfile();
+
+    if (!profile) {
+      return items.map(item => convertSM2ToAdaptive(item.wordId, item.history));
+    }
+
+    const convertedItems = items.map(item => ({
+      wordId: item.wordId,
+      history: convertHistoryToEvents(item.wordId, item.history)
+    }));
+
+    return await adaptiveEngine.calculateBatch(convertedItems, profile);
+  } catch (error) {
+    console.error('批量AI预测失败:', error);
+    return items.map(item => convertSM2ToAdaptive(item.wordId, item.history));
+  }
+}
+
+/**
+ * 转换历史数据格式为LearningEvent
+ */
+function convertHistoryToEvents(
+  wordId: string,
+  history: Array<{
+    action: 'learn' | 'review' | 'quiz';
+    result: 'correct' | 'incorrect' | 'partial';
+    timestamp: number;
+    timeTaken: number;
+    confidence: number;
+  }>
+) {
+  return history.map(h => ({
+    wordId,
+    word: '',  // AI不需要word字段，可以从wordId推断
+    timestamp: h.timestamp,
+    action: h.action,
+    result: h.result,
+    confidence: h.confidence,
+    timeTaken: h.timeTaken,
+    context: {
+      sessionLength: history.length,  // 简化：使用总历史长度
+      timeOfDay: getCurrentTimeOfDay()
+    }
+  }));
+}
+
+/**
+ * 将SM-2算法转换为AdaptiveReviewPlan格式
+ * 用于AI未启用或失败时的回退
+ */
+function convertSM2ToAdaptive(
+  wordId: string,
+  history: Array<{
+    action: 'learn' | 'review' | 'quiz';
+    result: 'correct' | 'incorrect' | 'partial';
+    timestamp: number;
+    timeTaken: number;
+    confidence: number;
+  }>
+): AdaptiveReviewPlan {
+  const correctCount = history.filter(h => h.result === 'correct').length;
+
+  // 简化版SM-2逻辑
+  let interval = 24; // 默认1天
+
+  if (correctCount >= 3) {
+    interval = 24 * Math.pow(2, correctCount - 2);
+  } else if (correctCount === 0) {
+    interval = 4; // 4小时后复习
+  }
+
+  // 限制范围
+  interval = Math.max(
+    adaptiveConfig.minInterval,
+    Math.min(adaptiveConfig.maxInterval, interval)
+  );
+
+  const nextReviewAt = Date.now() + (interval * 60 * 60 * 1000);
+
+  return {
+    wordId,
+    nextReviewAt,
+    interval: Math.round(interval),
+    confidence: 0.6,
+    reasoning: '使用SM-2算法（AI未启用）',
+    difficulty: correctCount >= 3 ? 'easy' : correctCount >= 1 ? 'medium' : 'hard',
+    suggestedAction: '建议按计划复习'
+  };
+}
+
+/**
+ * 获取当前时段（辅助函数）
+ */
+function getCurrentTimeOfDay(): 'morning' | 'afternoon' | 'evening' | 'night' {
+  const hour = new Date().getHours();
+  if (hour >= 5 && hour < 12) return 'morning';
+  if (hour >= 12 && hour < 18) return 'afternoon';
+  if (hour >= 18 && hour < 23) return 'evening';
+  return 'night';
+}
+
+/**
+ * 判断是否应该使用AI自适应引擎
+ */
+export function shouldUseAI(): boolean {
+  return adaptiveConfig.enableAI;
+}
+
+/**
+ * 切换AI自适应引擎开关
+ */
+export function toggleAI(enable?: boolean): boolean {
+  const newState = enable !== undefined ? enable : !adaptiveConfig.enableAI;
+  updateAdaptiveConfig({ enableAI: newState });
+  return newState;
 }

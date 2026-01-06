@@ -25,9 +25,12 @@ import { presetWordLists } from '../data/words'
 import { useShortcuts, getShortcutDisplay } from '../hooks/useShortcuts'
 import { aiService } from '../services/ai'
 import { dictionaryService } from '../services/dictionary'
-import { GeneratedExample, WordMeaningExplanation, AIConfig, defaultAIConfig } from '../services/ai/types'
+import { GeneratedExample as AIGeneratedExample, WordMeaningExplanation, AIConfig, defaultAIConfig } from '../services/ai/types'
 import { Link } from 'react-router-dom'
 import { voiceService } from '../services/voice'
+import { getProfileManager } from '../services/ai-core'
+import { personalizedContentLoader } from '../utils/personalized-content-helper'
+import type { GeneratedExample, GeneratedMemoryTip, GeneratedExplanation } from '../types/personalized-content'
 
 // 获取AI配置
 const getAIConfig = (): AIConfig => {
@@ -65,6 +68,44 @@ const saveTodayLearnedWords = (learnedWords: Map<string, { known: boolean; index
   localStorage.setItem(key, JSON.stringify(data))
 }
 
+// 获取当前时段
+const getTimeOfDay = (): 'morning' | 'afternoon' | 'evening' | 'night' => {
+  const hour = new Date().getHours()
+  if (hour >= 5 && hour < 12) return 'morning'
+  if (hour >= 12 && hour < 18) return 'afternoon'
+  if (hour >= 18 && hour < 23) return 'evening'
+  return 'night'
+}
+
+// 记录学习事件到AI画像系统
+const recordLearningEvent = async (
+  word: Word,
+  action: 'learn' | 'review' | 'quiz',
+  result: 'correct' | 'incorrect',
+  timeTaken: number,
+  sessionLength: number
+) => {
+  try {
+    const profileManager = getProfileManager()
+    await profileManager.recordEvent({
+      wordId: word.id,
+      word: word.word,
+      timestamp: Date.now(),
+      action,
+      result,
+      confidence: result === 'correct' ? 0.8 : 0.3,
+      timeTaken,
+      context: {
+        sessionLength,
+        timeOfDay: getTimeOfDay(),
+      },
+    })
+  } catch (error) {
+    console.error('记录学习事件失败:', error)
+    // 不阻塞用户学习，静默失败
+  }
+}
+
 export default function Learn() {
   const {
     currentBook,
@@ -99,11 +140,17 @@ export default function Learn() {
   const [viewingIndex, setViewingIndex] = useState<number | null>(null)
 
   // AI内容状态
-  const [aiExamples, setAiExamples] = useState<GeneratedExample[]>([])
+  const [aiExamples, setAiExamples] = useState<AIGeneratedExample[]>([])
   const [aiExplanation, setAiExplanation] = useState<WordMeaningExplanation | null>(null)
   const [aiMemoryTip, setAiMemoryTip] = useState<string>('')
   const [isLoadingAI, setIsLoadingAI] = useState(false)
   const [showAIAnalysis, setShowAIAnalysis] = useState(false)
+
+  // 个性化内容状态
+  const [personalizedExamples, setPersonalizedExamples] = useState<GeneratedExample[]>([])
+  const [personalizedMemoryTip, setPersonalizedMemoryTip] = useState<GeneratedMemoryTip | null>(null)
+  const [personalizedExplanation, setPersonalizedExplanation] = useState<GeneratedExplanation | null>(null)
+  const [isLoadingPersonalized, setIsLoadingPersonalized] = useState(false)
 
   const currentWord = words[currentIndex]
 
@@ -191,6 +238,11 @@ export default function Learn() {
     setAiExplanation(null)
     setAiMemoryTip('')
     setShowAIAnalysis(false)
+    // 重置个性化内容
+    setPersonalizedExamples([])
+    setPersonalizedMemoryTip(null)
+    setPersonalizedExplanation(null)
+    setIsLoadingPersonalized(false)
   }, [currentIndex, currentWord, isViewingHistory])
 
   // 检查单词数据是否完整
@@ -253,6 +305,49 @@ export default function Learn() {
     }
   }, [displayWord, displayIndex, isWordDataIncomplete])
 
+  // 加载个性化内容(基于用户画像)
+  const loadPersonalizedContent = useCallback(async () => {
+    if (!displayWord) return
+
+    const aiConfig = getAIConfig()
+    if (!aiConfig.enabled) {
+      alert('请先在设置中配置 AI 服务')
+      return
+    }
+
+    setIsLoadingPersonalized(true)
+    try {
+      // 获取用户画像
+      const profileManager = getProfileManager()
+      const profile = await profileManager.getProfile()
+
+      if (!profile) {
+        console.warn('用户画像未创建,无法生成个性化内容')
+        setIsLoadingPersonalized(false)
+        return
+      }
+
+      // 使用个性化内容加载器
+      const content = await personalizedContentLoader.loadContentForWord(
+        displayWord,
+        profile,
+        {
+          loadExamples: true,
+          loadMemoryTip: true,
+          loadExplanation: true,
+        }
+      )
+
+      setPersonalizedExamples(content.examples)
+      setPersonalizedMemoryTip(content.memoryTip)
+      setPersonalizedExplanation(content.explanation)
+    } catch (error) {
+      console.error('Failed to load personalized content:', error)
+    } finally {
+      setIsLoadingPersonalized(false)
+    }
+  }, [displayWord])
+
   // 自动加载 AI 内容（如果启用）
   useEffect(() => {
     if (displayWord && showAnswer && settings.enableAIAnalysis && !showAIAnalysis && !isLoadingAI && !isViewingHistory) {
@@ -260,12 +355,33 @@ export default function Learn() {
     }
   }, [displayWord, showAnswer, settings.enableAIAnalysis, showAIAnalysis, isLoadingAI, isViewingHistory, loadAIContent])
 
-  // 快捷键处理显示AI分析
-  const handleShortcutAIAnalysis = useCallback(() => {
-    if (showAnswer && !isLoadingAI && !showAIAnalysis) {
-      loadAIContent()
+  // 通用AI按钮处理 - 快捷键W
+  const handleGeneralAIButton = useCallback(async () => {
+    if (!showAIAnalysis && !isLoadingAI) {
+      await loadAIContent()
     }
-  }, [showAnswer, isLoadingAI, showAIAnalysis, loadAIContent])
+  }, [showAIAnalysis, isLoadingAI, loadAIContent])
+
+  // 个性化AI按钮处理 - 快捷键E
+  const handlePersonalizedAIButton = useCallback(async () => {
+    if (personalizedExamples.length === 0 && !isLoadingPersonalized) {
+      await loadPersonalizedContent()
+    }
+  }, [personalizedExamples.length, isLoadingPersonalized, loadPersonalizedContent])
+
+  // 快捷键W: 显示通用AI分析
+  const handleShortcutGeneralAI = useCallback(() => {
+    if (showAnswer && !isLoadingAI) {
+      handleGeneralAIButton()
+    }
+  }, [showAnswer, isLoadingAI, handleGeneralAIButton])
+
+  // 快捷键E: 显示个性化内容
+  const handleShortcutPersonalizedAI = useCallback(() => {
+    if (showAnswer && !isLoadingPersonalized) {
+      handlePersonalizedAIButton()
+    }
+  }, [showAnswer, isLoadingPersonalized, handlePersonalizedAIButton])
 
   const handleKnow = async () => {
     if (!currentWord || isProcessingRef.current) return
@@ -280,6 +396,15 @@ export default function Learn() {
       await updateRecord(currentWord.id, true, quality)
       recordWordResult(currentWord.id, true)
       setCorrectCount(c => c + 1)
+
+      // 记录学习事件到AI画像系统
+      await recordLearningEvent(
+        currentWord,
+        'learn',
+        'correct',
+        responseTime,
+        words.length
+      )
 
       // 记录为已学单词（认识）
       setLearnedWords(prev => {
@@ -315,6 +440,15 @@ export default function Learn() {
       const quality = getQualityFromResponse(0, false)
       await updateRecord(currentWord.id, false, quality)
       recordWordResult(currentWord.id, false)
+
+      // 记录学习事件到AI画像系统
+      await recordLearningEvent(
+        currentWord,
+        'learn',
+        'incorrect',
+        Date.now() - startTime,
+        words.length
+      )
 
       // 记录为已学单词（不认识）
       setLearnedWords(prev => {
@@ -441,7 +575,8 @@ export default function Learn() {
     markKnown: handleShortcutKnow,
     markUnknown: handleShortcutUnknown,
     playAudio,
-    showAIAnalysis: handleShortcutAIAnalysis,
+    showAIAnalysis: handleShortcutGeneralAI,
+    showPersonalizedAI: handleShortcutPersonalizedAI,
   }, !isLoading && !sessionComplete && words.length > 0)
 
   if (isLoading) {
@@ -653,7 +788,7 @@ export default function Learn() {
                       ))}
                     </div>
 
-                  {/* AI词义解释 */}
+                  {/* AI词义解释 - 通用AI */}
                   {isLoadingAI && !aiExplanation && (
                     <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg">
                       <div className="flex items-center gap-2 text-purple-600 mb-2">
@@ -748,6 +883,112 @@ export default function Learn() {
                           <p className="text-gray-700 leading-relaxed text-sm">{aiMemoryTip}</p>
                         </div>
                       )}
+
+                      {/* 个性化内容区域(基于用户画像) - 独立显示 */}
+                      {isLoadingPersonalized && (
+                        <div className="p-4 bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg border border-pink-100">
+                          <div className="flex items-center gap-2 text-pink-600 mb-2">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span className="text-sm font-medium">正在生成个性化内容...</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 个性化例句 - 独立显示 */}
+                      {personalizedExamples.length > 0 && (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-pink-600 text-sm">
+                            <Sparkles className="w-4 h-4" />
+                            <span className="font-medium">个性化例句</span>
+                            <span className="text-xs px-2 py-0.5 bg-pink-100 rounded-full">基于你的学习风格</span>
+                          </div>
+                          {personalizedExamples.map((example, index) => (
+                            <div key={`personalized-${index}`} className="p-4 bg-gradient-to-r from-pink-50 to-purple-50 rounded-lg border border-pink-100 relative">
+                              <div className="flex items-center gap-2 mb-2">
+                                <Sparkles className="w-3 h-3 text-pink-500" />
+                                <span className="text-xs text-pink-600 font-medium">
+                                  {example.style === 'visual' ? '视觉型' : example.style === 'linguistic' ? '语言型' : '情境型'}
+                                </span>
+                                <span className="text-xs px-2 py-0.5 bg-pink-100 rounded-full">
+                                  {example.difficulty}
+                                </span>
+                              </div>
+                              <p className="text-gray-700 italic mb-2">"{example.sentence}"</p>
+                              <p className="text-gray-600 text-sm mb-1">{example.translation}</p>
+                              <p className="text-gray-500 text-xs">{example.scenario}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* 个性化记忆技巧 - 独立显示 */}
+                      {personalizedMemoryTip && (
+                        <div className="p-4 bg-gradient-to-r from-green-50 to-teal-50 rounded-lg border border-green-200">
+                          <div className="flex items-center gap-2 text-green-600 mb-2">
+                            <Lightbulb className="w-4 h-4" />
+                            <span className="text-sm font-medium">个性化记忆技巧</span>
+                            <span className="text-xs px-2 py-0.5 bg-green-100 rounded-full">
+                              {personalizedMemoryTip.technique === 'association' && '联想记忆法'}
+                              {personalizedMemoryTip.technique === 'wordRoot' && '词根词缀法'}
+                              {personalizedMemoryTip.technique === 'scene' && '场景记忆法'}
+                              {personalizedMemoryTip.technique === 'story' && '故事记忆法'}
+                              {personalizedMemoryTip.technique === 'mnemonic' && '助记符法'}
+                            </span>
+                          </div>
+                          <p className="font-semibold text-gray-800 mb-2">{personalizedMemoryTip.title}</p>
+                          <p className="text-gray-700 leading-relaxed text-sm mb-2">{personalizedMemoryTip.content}</p>
+                          <div className="flex gap-3 text-xs">
+                            <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">
+                              有效性: {(personalizedMemoryTip.effectiveness * 100).toFixed(0)}%
+                            </span>
+                            <span className="px-2 py-1 bg-teal-100 text-teal-700 rounded-full">
+                              预计: {personalizedMemoryTip.estimatedTime}分钟
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 个性化释义 - 独立显示 */}
+                      {personalizedExplanation && (
+                        <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
+                          <div className="flex items-center gap-2 text-blue-600 mb-3">
+                            <BookOpen className="w-4 h-4" />
+                            <span className="text-sm font-medium">个性化释义</span>
+                            <span className="text-xs px-2 py-0.5 bg-blue-100 rounded-full">{personalizedExplanation.difficulty}</span>
+                          </div>
+                          <p className="text-gray-700 mb-3">{personalizedExplanation.definition}</p>
+                          {personalizedExplanation.synonyms && personalizedExplanation.synonyms.length > 0 && (
+                            <div className="mb-2">
+                              <span className="text-xs text-gray-500 mr-2">同义词:</span>
+                              {personalizedExplanation.synonyms.map((synonym, i) => (
+                                <span key={i} className="inline-block px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs mr-1">
+                                  {synonym}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {personalizedExplanation.antonyms && personalizedExplanation.antonyms.length > 0 && (
+                            <div className="mb-2">
+                              <span className="text-xs text-gray-500 mr-2">反义词:</span>
+                              {personalizedExplanation.antonyms.map((antonym, i) => (
+                                <span key={i} className="inline-block px-2 py-1 bg-red-100 text-red-700 rounded-full text-xs mr-1">
+                                  {antonym}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {personalizedExplanation.collocations && personalizedExplanation.collocations.length > 0 && (
+                            <div>
+                              <span className="text-xs text-gray-500 mr-2">常用搭配:</span>
+                              {personalizedExplanation.collocations.map((collocation, i) => (
+                                <span key={i} className="inline-block px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs mr-1">
+                                  {collocation}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
@@ -771,24 +1012,68 @@ export default function Learn() {
                   </span>
                   <span className="text-xs opacity-60">{getShortcutDisplay(settings.shortcuts?.markUnknown || 'KeyA')}</span>
                 </button>
-                {!showAIAnalysis && !isLoadingAI && (
-                  <button
-                    onClick={loadAIContent}
-                    className="flex-1 max-w-40 py-4 bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 text-purple-700 rounded-xl font-medium transition-colors flex flex-col items-center gap-1 border-2 border-dashed border-purple-200 hover:border-purple-300"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Sparkles className="w-5 h-5" />
-                      AI分析
-                    </span>
-                    <span className="text-xs opacity-60">{getShortcutDisplay(settings.shortcuts?.showAIAnalysis || 'KeyW')}</span>
-                  </button>
-                )}
-                {isLoadingAI && (
-                  <div className="flex-1 max-w-40 py-4 bg-purple-50 rounded-xl font-medium flex flex-col items-center gap-1">
-                    <Loader2 className="w-5 h-5 animate-spin text-purple-500" />
-                    <span className="text-sm text-purple-600">分析中...</span>
-                  </div>
-                )}
+                {/* 双按钮独立设计: 通用AI (W) + 个性化AI (E) */}
+                <div className="flex gap-2 flex-1 max-w-40">
+                  {/* 通用AI按钮 - 快捷键W */}
+                  {!showAIAnalysis && !isLoadingAI ? (
+                    <button
+                      onClick={handleGeneralAIButton}
+                      className="flex-1 py-3 bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 text-purple-700 rounded-xl font-medium transition-colors flex flex-col items-center gap-1 border-2 border-dashed border-purple-200 hover:border-purple-300"
+                    >
+                      <span className="flex items-center gap-1">
+                        <Sparkles className="w-4 h-4" />
+                        <span className="text-sm">通用AI</span>
+                      </span>
+                      <span className="text-xs opacity-60">{getShortcutDisplay(settings.shortcuts?.showAIAnalysis || 'KeyW')}</span>
+                    </button>
+                  ) : isLoadingAI ? (
+                    <div className="flex-1 py-3 bg-purple-50 rounded-xl font-medium flex flex-col items-center gap-1">
+                      <Loader2 className="w-4 h-4 animate-spin text-purple-500" />
+                      <span className="text-xs text-purple-600">分析中...</span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleGeneralAIButton}
+                      className="flex-1 py-3 bg-gradient-to-r from-purple-50 to-blue-50 text-purple-700 rounded-xl font-medium transition-colors flex flex-col items-center gap-1 border-2 border-purple-200 opacity-80 cursor-default"
+                    >
+                      <span className="flex items-center gap-1">
+                        <Sparkles className="w-4 h-4" />
+                        <span className="text-sm">AI分析</span>
+                      </span>
+                      <span className="text-xs opacity-60">{getShortcutDisplay(settings.shortcuts?.showAIAnalysis || 'KeyW')}</span>
+                    </button>
+                  )}
+
+                  {/* 个性化AI按钮 - 快捷键E */}
+                  {personalizedExamples.length === 0 && !isLoadingPersonalized ? (
+                    <button
+                      onClick={handlePersonalizedAIButton}
+                      className="flex-1 py-3 bg-gradient-to-r from-pink-50 to-purple-50 hover:from-pink-100 hover:to-purple-100 text-pink-700 rounded-xl font-medium transition-colors flex flex-col items-center gap-1 border-2 border-dashed border-pink-200 hover:border-pink-300"
+                    >
+                      <span className="flex items-center gap-1">
+                        <Sparkles className="w-4 h-4" />
+                        <span className="text-sm">个性AI</span>
+                      </span>
+                      <span className="text-xs opacity-60">{getShortcutDisplay(settings.shortcuts?.showPersonalizedAI || 'KeyE')}</span>
+                    </button>
+                  ) : isLoadingPersonalized ? (
+                    <div className="flex-1 py-3 bg-pink-50 rounded-xl font-medium flex flex-col items-center gap-1">
+                      <Loader2 className="w-4 h-4 animate-spin text-pink-500" />
+                      <span className="text-xs text-pink-600">生成中...</span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handlePersonalizedAIButton}
+                      className="flex-1 py-3 bg-gradient-to-r from-pink-50 to-purple-50 text-pink-700 rounded-xl font-medium transition-colors flex flex-col items-center gap-1 border-2 border-pink-200 opacity-80 cursor-default"
+                    >
+                      <span className="flex items-center gap-1">
+                        <Sparkles className="w-4 h-4" />
+                        <span className="text-sm">个性化</span>
+                      </span>
+                      <span className="text-xs opacity-60">{getShortcutDisplay(settings.shortcuts?.showPersonalizedAI || 'KeyE')}</span>
+                    </button>
+                  )}
+                </div>
                 <button
                   onClick={goToNextHistory}
                   className="flex-1 max-w-40 py-4 bg-green-50 hover:bg-green-100 text-green-600 rounded-xl font-medium transition-colors flex flex-col items-center gap-1"
@@ -814,24 +1099,68 @@ export default function Learn() {
                   </span>
                   <span className="text-xs opacity-60">{getShortcutDisplay(settings.shortcuts?.markUnknown || 'KeyA')}</span>
                 </button>
-                {!showAIAnalysis && !isLoadingAI && (
-                  <button
-                    onClick={loadAIContent}
-                    className="flex-1 max-w-40 py-4 bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 text-purple-700 rounded-xl font-medium transition-colors flex flex-col items-center gap-1 border-2 border-dashed border-purple-200 hover:border-purple-300"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Sparkles className="w-5 h-5" />
-                      AI分析
-                    </span>
-                    <span className="text-xs opacity-60">{getShortcutDisplay(settings.shortcuts?.showAIAnalysis || 'KeyW')}</span>
-                  </button>
-                )}
-                {isLoadingAI && (
-                  <div className="flex-1 max-w-40 py-4 bg-purple-50 rounded-xl font-medium flex flex-col items-center gap-1">
-                    <Loader2 className="w-5 h-5 animate-spin text-purple-500" />
-                    <span className="text-sm text-purple-600">分析中...</span>
-                  </div>
-                )}
+                {/* 双按钮独立设计: 通用AI (W) + 个性化AI (E) */}
+                <div className="flex gap-2 flex-1 max-w-48">
+                  {/* 通用AI按钮 - 快捷键W */}
+                  {!showAIAnalysis && !isLoadingAI ? (
+                    <button
+                      onClick={handleGeneralAIButton}
+                      className="flex-1 py-4 bg-gradient-to-r from-purple-50 to-blue-50 hover:from-purple-100 hover:to-blue-100 text-purple-700 rounded-xl font-medium transition-colors flex flex-col items-center gap-1 border-2 border-dashed border-purple-200 hover:border-purple-300"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Sparkles className="w-5 h-5" />
+                        通用AI
+                      </span>
+                      <span className="text-xs opacity-60">{getShortcutDisplay(settings.shortcuts?.showAIAnalysis || 'KeyW')}</span>
+                    </button>
+                  ) : isLoadingAI ? (
+                    <div className="flex-1 py-4 bg-purple-50 rounded-xl font-medium flex flex-col items-center gap-1">
+                      <Loader2 className="w-5 h-5 animate-spin text-purple-500" />
+                      <span className="text-sm text-purple-600">分析中...</span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleGeneralAIButton}
+                      className="flex-1 py-4 bg-gradient-to-r from-purple-50 to-blue-50 text-purple-700 rounded-xl font-medium transition-colors flex flex-col items-center gap-1 border-2 border-purple-200 opacity-80 cursor-default"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Sparkles className="w-5 h-5" />
+                        AI分析
+                      </span>
+                      <span className="text-xs opacity-60">{getShortcutDisplay(settings.shortcuts?.showAIAnalysis || 'KeyW')}</span>
+                    </button>
+                  )}
+
+                  {/* 个性化AI按钮 - 快捷键E */}
+                  {personalizedExamples.length === 0 && !isLoadingPersonalized ? (
+                    <button
+                      onClick={handlePersonalizedAIButton}
+                      className="flex-1 py-4 bg-gradient-to-r from-pink-50 to-purple-50 hover:from-pink-100 hover:to-purple-100 text-pink-700 rounded-xl font-medium transition-colors flex flex-col items-center gap-1 border-2 border-dashed border-pink-200 hover:border-pink-300"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Sparkles className="w-5 h-5" />
+                        个性AI
+                      </span>
+                      <span className="text-xs opacity-60">{getShortcutDisplay(settings.shortcuts?.showPersonalizedAI || 'KeyE')}</span>
+                    </button>
+                  ) : isLoadingPersonalized ? (
+                    <div className="flex-1 py-4 bg-pink-50 rounded-xl font-medium flex flex-col items-center gap-1">
+                      <Loader2 className="w-5 h-5 animate-spin text-pink-500" />
+                      <span className="text-sm text-pink-600">生成中...</span>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handlePersonalizedAIButton}
+                      className="flex-1 py-4 bg-gradient-to-r from-pink-50 to-purple-50 text-pink-700 rounded-xl font-medium transition-colors flex flex-col items-center gap-1 border-2 border-pink-200 opacity-80 cursor-default"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Sparkles className="w-5 h-5" />
+                        个性化
+                      </span>
+                      <span className="text-xs opacity-60">{getShortcutDisplay(settings.shortcuts?.showPersonalizedAI || 'KeyE')}</span>
+                    </button>
+                  )}
+                </div>
                 <button
                   onClick={handleKnow}
                   disabled={isProcessing}

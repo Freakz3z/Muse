@@ -6,3 +6,6 @@ electron-cache/
 *.log
 .DS_Store
 .claude
+
+# Private development docs (may contain sensitive info)
+docs/

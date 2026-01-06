@@ -10,7 +10,6 @@ import {
   StudySession,
   defaultShortcuts
 } from '../types';
-import { StudyPlan } from '../services/ai/types';
 import {
   wordStorage,
   recordStorage,
@@ -19,10 +18,10 @@ import {
   profileStorage,
   statsStorage,
   sessionStorage,
-  studyPlanStorage,
+  learningEventsStorage,
   triggerSync
 } from '../storage';
-import { calculateNextReview, calculateSM2 } from '../utils/spaced-repetition';
+import { calculateNextReview, calculateSM2, calculateAdaptiveNextReview } from '../utils/spaced-repetition';
 import { initializeBuiltinData } from '../data/words';
 
 interface AppState {
@@ -36,26 +35,25 @@ interface AppState {
   isLoading: boolean;
   todayStats: StudyStats;
   currentSession: StudySession | null;
-  studyPlan: StudyPlan | null;
 
   // 跨窗口同步 - 重新加载词库数据
   syncBooks: () => Promise<void>;
-  
+
   // 初始化
   initialize: () => Promise<void>;
-  
+
   // 单词操作
   loadWords: () => Promise<void>;
   addWord: (word: Word) => Promise<void>;
   getWordsByBook: (bookId: string) => Promise<Word[]>;
-  
+
   // 学习记录操作
   loadRecords: () => Promise<void>;
   updateRecord: (wordId: string, correct: boolean, quality: number) => Promise<void>;
   getWordsToReview: () => Promise<Word[]>;
   getAllLearnedWords: () => Promise<Word[]>;
   getNewWords: (count: number) => Promise<Word[]>;
-  
+
   // 词库操作
   loadBooks: () => Promise<void>;
   selectBook: (bookId: string) => Promise<void>;
@@ -64,31 +62,25 @@ interface AppState {
   addWordToBook: (bookId: string, wordId: string) => Promise<void>;
   removeWordFromBook: (bookId: string, wordId: string) => Promise<void>;
   batchAddWordsToBook: (bookId: string, words: Word[]) => Promise<void>;
-  
+
   // 设置操作
   loadSettings: () => Promise<void>;
   updateSettings: (settings: Partial<UserSettings>) => Promise<void>;
-  
+
   // 用户档案操作
   loadProfile: () => Promise<void>;
   updateProfile: (profile: Partial<UserProfile>) => Promise<void>;
   createProfile: (profile: Omit<UserProfile, 'id' | 'createdAt'>) => Promise<void>;
-  
+
   // 统计操作
   loadTodayStats: () => Promise<void>;
   updateTodayStats: (updates: Partial<StudyStats>) => Promise<void>;
   updateStreak: () => Promise<void>;
-  
+
   // 会话操作
   startSession: (mode: 'learn' | 'review' | 'quiz', bookId: string) => Promise<void>;
   endSession: () => Promise<void>;
   recordWordResult: (wordId: string, correct: boolean) => void;
-
-  // 学习计划操作
-  loadStudyPlan: () => Promise<void>;
-  saveStudyPlan: (plan: StudyPlan) => Promise<void>;
-  deleteStudyPlan: () => Promise<void>;
-  updateStudyPlanWeek: (week: number) => Promise<void>;
 }
 
 const getDefaultSettings = (): UserSettings => ({
@@ -125,8 +117,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     correctRate: 0,
   },
   currentSession: null,
-  studyPlan: null,
-  
+
   initialize: async () => {
     set({ isLoading: true });
 
@@ -143,7 +134,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       get().loadSettings(),
       get().loadProfile(),
       get().loadTodayStats(),
-      get().loadStudyPlan(),
     ]);
 
     // 计算已消耗时间
@@ -181,12 +171,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   
   updateRecord: async (wordId, correct, quality) => {
-    const { records } = get();
+    const { records, words } = get();
     let record = records.get(wordId);
     const now = Date.now();
-    
+    const word = words.find(w => w.id === wordId);
+
     if (!record) {
-      // 新词首次学习
+      // 新词首次学习 - 使用默认的SM-2算法
       record = {
         wordId,
         masteryLevel: MasteryLevel.LEARNING,
@@ -200,26 +191,61 @@ export const useAppStore = create<AppState>((set, get) => ({
         interval: 1,
       };
     } else {
-      // 复习更新
-      const sm2Result = calculateSM2(record.easeFactor, record.interval, quality);
-      const correctRate = (record.correctCount + (correct ? 1 : 0)) / (record.reviewCount + 1);
-      
-      record = {
-        ...record,
-        lastReviewAt: now,
-        nextReviewAt: calculateNextReview(sm2Result.interval),
-        reviewCount: record.reviewCount + 1,
-        correctCount: record.correctCount + (correct ? 1 : 0),
-        wrongCount: record.wrongCount + (correct ? 0 : 1),
-        easeFactor: sm2Result.easeFactor,
-        interval: sm2Result.interval,
-        masteryLevel: correctRate >= 0.9 ? MasteryLevel.MASTERED :
-                      correctRate >= 0.7 ? MasteryLevel.FAMILIAR :
-                      correctRate >= 0.5 ? MasteryLevel.REVIEWING :
-                      MasteryLevel.LEARNING,
-      };
+      // 复习更新 - 尝试使用AI自适应引擎
+      try {
+        // 获取该单词的学习历史
+        const wordHistory = await learningEventsStorage.getWordHistory(wordId);
+
+        // 使用AI自适应引擎预测下次复习时间
+        const adaptivePlan = await calculateAdaptiveNextReview(wordId, wordHistory);
+
+        // 更新掌握度
+        const correctRate = (record.correctCount + (correct ? 1 : 0)) / (record.reviewCount + 1);
+
+        record = {
+          ...record,
+          lastReviewAt: now,
+          nextReviewAt: adaptivePlan.nextReviewAt,
+          reviewCount: record.reviewCount + 1,
+          correctCount: record.correctCount + (correct ? 1 : 0),
+          wrongCount: record.wrongCount + (correct ? 0 : 1),
+          interval: adaptivePlan.interval / 24, // 转换为天数（用于兼容）
+          masteryLevel: correctRate >= 0.9 ? MasteryLevel.MASTERED :
+                        correctRate >= 0.7 ? MasteryLevel.FAMILIAR :
+                        correctRate >= 0.5 ? MasteryLevel.REVIEWING :
+                        MasteryLevel.LEARNING,
+        };
+
+        console.log(`[AI] ${word?.word || wordId} 自适应复习计划:`, {
+          interval: adaptivePlan.interval,
+          confidence: adaptivePlan.confidence,
+          reasoning: adaptivePlan.reasoning,
+          difficulty: adaptivePlan.difficulty
+        });
+      } catch (error) {
+        console.error('AI自适应预测失败，回退到SM-2:', error);
+
+        // 回退到传统SM-2算法
+        const sm2Result = calculateSM2(record.easeFactor, record.interval, quality);
+        const correctRate = (record.correctCount + (correct ? 1 : 0)) / (record.reviewCount + 1);
+
+        record = {
+          ...record,
+          lastReviewAt: now,
+          nextReviewAt: calculateNextReview(sm2Result.interval),
+          reviewCount: record.reviewCount + 1,
+          correctCount: record.correctCount + (correct ? 1 : 0),
+          wrongCount: record.wrongCount + (correct ? 0 : 1),
+          easeFactor: sm2Result.easeFactor,
+          interval: sm2Result.interval,
+          masteryLevel: correctRate >= 0.9 ? MasteryLevel.MASTERED :
+                        correctRate >= 0.7 ? MasteryLevel.FAMILIAR :
+                        correctRate >= 0.5 ? MasteryLevel.REVIEWING :
+                        MasteryLevel.LEARNING,
+        };
+      }
     }
-    
+
     await recordStorage.save(record);
     set((state) => {
       const newRecords = new Map(state.records);
@@ -557,36 +583,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       
       return { currentSession: session };
     });
-  },
-
-  // 学习计划操作
-  loadStudyPlan: async () => {
-    const plan = await studyPlanStorage.getActive();
-    set({ studyPlan: plan });
-  },
-
-  saveStudyPlan: async (plan) => {
-    await studyPlanStorage.save(plan);
-    set({ studyPlan: plan });
-  },
-
-  deleteStudyPlan: async () => {
-    await studyPlanStorage.delete();
-    set({ studyPlan: null });
-  },
-
-  updateStudyPlanWeek: async (week) => {
-    const { studyPlan } = get();
-    if (!studyPlan) return;
-
-    const status: 'active' | 'completed' | 'paused' = week >= studyPlan.totalWeeks ? 'completed' : 'active';
-    const updatedPlan: StudyPlan = {
-      ...studyPlan,
-      currentWeek: week,
-      status,
-    };
-    await studyPlanStorage.save(updatedPlan);
-    set({ studyPlan: updatedPlan });
   },
 
   // 跨窗口同步：从存储重新加载词库数据

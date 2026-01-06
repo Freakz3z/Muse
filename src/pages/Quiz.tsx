@@ -5,14 +5,57 @@ import {
   X,
   Trophy,
   RefreshCw,
-  Keyboard
+  Keyboard,
+  Sparkles,
+  Lightbulb,
+  Loader2,
 } from 'lucide-react'
 import { useAppStore } from '../store'
 import { Word } from '../types'
 import { defaultShortcuts } from '../types'
 import ProgressBar from '../components/ProgressBar'
+import { getProfileManager } from '../services/ai-core'
+import { personalizedContentLoader } from '../utils/personalized-content-helper'
+import type { GeneratedMemoryTip } from '../types/personalized-content'
 
 type QuizMode = 'choice' | 'spelling'
+
+// 获取当前时段
+const getTimeOfDay = (): 'morning' | 'afternoon' | 'evening' | 'night' => {
+  const hour = new Date().getHours()
+  if (hour >= 5 && hour < 12) return 'morning'
+  if (hour >= 12 && hour < 18) return 'afternoon'
+  if (hour >= 18 && hour < 23) return 'evening'
+  return 'night'
+}
+
+// 记录测验事件到AI画像系统
+const recordQuizEvent = async (
+  word: Word,
+  result: 'correct' | 'incorrect',
+  timeTaken: number,
+  sessionLength: number
+) => {
+  try {
+    const profileManager = getProfileManager()
+    await profileManager.recordEvent({
+      wordId: word.id,
+      word: word.word,
+      timestamp: Date.now(),
+      action: 'quiz',
+      result,
+      confidence: result === 'correct' ? 0.9 : 0.2,
+      timeTaken,
+      context: {
+        sessionLength,
+        timeOfDay: getTimeOfDay(),
+      },
+    })
+  } catch (error) {
+    console.error('记录测验事件失败:', error)
+    // 不阻塞用户学习，静默失败
+  }
+}
 
 export default function Quiz() {
   const { words, records, settings } = useAppStore()
@@ -29,32 +72,39 @@ export default function Quiz() {
   const [quizComplete, setQuizComplete] = useState(false)
   const [startTime, setStartTime] = useState(0)
   const [duration, setDuration] = useState(0)
+  const [questionStartTime, setQuestionStartTime] = useState(0)
+
+  // 个性化内容状态
+  const [personalizedMemoryTip, setPersonalizedMemoryTip] = useState<GeneratedMemoryTip | null>(null)
+  const [isLoadingPersonalized, setIsLoadingPersonalized] = useState(false)
+  const [showMemoryTip, setShowMemoryTip] = useState(false)
 
   const currentWord = quizWords[currentIndex]
 
   const startQuiz = (selectedMode: QuizMode) => {
     setMode(selectedMode)
-    
+
     // 从已学习的单词中选择测验词汇
     const learnedWordIds = new Set(records.keys())
     let availableWords = words.filter(w => learnedWordIds.has(w.id))
-    
+
     // 如果学习的词不够，补充一些未学习的
     if (availableWords.length < 10) {
       const unlearned = words.filter(w => !learnedWordIds.has(w.id))
       availableWords = [...availableWords, ...unlearned.slice(0, 10 - availableWords.length)]
     }
-    
+
     // 随机选择10个单词
     const shuffled = availableWords.sort(() => Math.random() - 0.5)
     const selected = shuffled.slice(0, 10)
-    
+
     setQuizWords(selected)
     setCurrentIndex(0)
     setScore(0)
     setQuizComplete(false)
     setStartTime(Date.now())
-    
+    setQuestionStartTime(Date.now()) // 初始化第一个问题开始时间
+
     if (selectedMode === 'choice' && selected.length > 0) {
       generateOptions(selected[0], selected)
     }
@@ -76,27 +126,57 @@ export default function Quiz() {
 
   const handleChoiceSelect = (answer: string) => {
     if (selectedAnswer) return
-    
+
     const correct = answer === currentWord.meanings[0]?.translation
+    const timeTaken = Date.now() - questionStartTime
+
     setSelectedAnswer(answer)
     setIsCorrect(correct)
     if (correct) setScore(s => s + 1)
     setShowResult(true)
-    
+
+    // 记录测验事件到AI画像系统
+    recordQuizEvent(
+      currentWord,
+      correct ? 'correct' : 'incorrect',
+      timeTaken,
+      quizWords.length
+    )
+
+    // 如果答错,加载个性化记忆技巧
+    if (!correct) {
+      loadPersonalizedMemoryTip(currentWord)
+    }
+
     setTimeout(() => {
       goToNext()
-    }, 1500)
+    }, correct ? 1500 : 3000) // 答错时延长显示时间,让用户看到记忆技巧
   }
 
   const handleSpellingSubmit = () => {
     const correct = inputValue.toLowerCase().trim() === currentWord.word.toLowerCase()
+    const timeTaken = Date.now() - questionStartTime
+
     setIsCorrect(correct)
     if (correct) setScore(s => s + 1)
     setShowResult(true)
-    
+
+    // 记录测验事件到AI画像系统
+    recordQuizEvent(
+      currentWord,
+      correct ? 'correct' : 'incorrect',
+      timeTaken,
+      quizWords.length
+    )
+
+    // 如果答错,加载个性化记忆技巧
+    if (!correct) {
+      loadPersonalizedMemoryTip(currentWord)
+    }
+
     setTimeout(() => {
       goToNext()
-    }, 1500)
+    }, correct ? 1500 : 3000) // 答错时延长显示时间,让用户看到记忆技巧
   }
 
   const goToNext = () => {
@@ -107,7 +187,12 @@ export default function Quiz() {
       setIsCorrect(null)
       setShowResult(false)
       setInputValue('')
-      
+      setQuestionStartTime(Date.now()) // 重置问题开始时间
+      // 重置个性化内容
+      setPersonalizedMemoryTip(null)
+      setIsLoadingPersonalized(false)
+      setShowMemoryTip(false)
+
       if (mode === 'choice') {
         generateOptions(quizWords[nextIndex], quizWords)
       }
@@ -126,6 +211,51 @@ export default function Quiz() {
     setSelectedAnswer(null)
     setIsCorrect(null)
     setInputValue('')
+    // 重置个性化内容
+    setPersonalizedMemoryTip(null)
+    setIsLoadingPersonalized(false)
+    setShowMemoryTip(false)
+  }
+
+  // 加载个性化记忆技巧
+  const loadPersonalizedMemoryTip = async (word: Word) => {
+    // 检查 AI 配置
+    const aiConfig = JSON.parse(localStorage.getItem('ai_config') || '{}')
+    if (!aiConfig.enabled) {
+      return
+    }
+
+    setIsLoadingPersonalized(true)
+    setShowMemoryTip(true)
+
+    try {
+      // 获取用户画像
+      const profileManager = getProfileManager()
+      const profile = await profileManager.getProfile()
+
+      if (!profile) {
+        console.warn('用户画像未创建,无法生成个性化内容')
+        setIsLoadingPersonalized(false)
+        return
+      }
+
+      // 只加载记忆技巧
+      const content = await personalizedContentLoader.loadContentForWord(
+        word,
+        profile,
+        {
+          loadExamples: false,
+          loadMemoryTip: true,
+          loadExplanation: false,
+        }
+      )
+
+      setPersonalizedMemoryTip(content.memoryTip)
+    } catch (error) {
+      console.error('加载个性化记忆技巧失败:', error)
+    } finally {
+      setIsLoadingPersonalized(false)
+    }
   }
 
   // 模式选择界面
@@ -319,6 +449,46 @@ export default function Quiz() {
                     </button>
                   )
                 })}
+                {/* 个性化记忆技巧 - 答错时显示 */}
+                {showResult && !isCorrect && showMemoryTip && (
+                  <div className="mt-4">
+                    {isLoadingPersonalized ? (
+                      <div className="p-4 bg-gradient-to-r from-green-50 to-teal-50 rounded-lg border border-teal-100">
+                        <div className="flex items-center justify-center gap-2 text-teal-600">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span className="text-sm font-medium">正在生成记忆技巧...</span>
+                        </div>
+                      </div>
+                    ) : personalizedMemoryTip ? (
+                      <div className="p-4 bg-gradient-to-r from-green-50 to-teal-50 rounded-lg border border-green-200">
+                        <div className="flex items-center gap-2 text-green-600 mb-2">
+                          <Lightbulb className="w-4 h-4" />
+                          <span className="text-sm font-medium">个性化记忆技巧</span>
+                          <Sparkles className="w-3 h-3" />
+                        </div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
+                            {personalizedMemoryTip.technique === 'association' && '联想记忆法'}
+                            {personalizedMemoryTip.technique === 'wordRoot' && '词根词缀法'}
+                            {personalizedMemoryTip.technique === 'scene' && '场景记忆法'}
+                            {personalizedMemoryTip.technique === 'story' && '故事记忆法'}
+                            {personalizedMemoryTip.technique === 'mnemonic' && '助记符法'}
+                          </span>
+                        </div>
+                        <p className="font-semibold text-gray-800 mb-2">{personalizedMemoryTip.title}</p>
+                        <p className="text-gray-700 leading-relaxed text-sm mb-2">{personalizedMemoryTip.content}</p>
+                        <div className="flex gap-3 text-xs">
+                          <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">
+                            有效性: {(personalizedMemoryTip.effectiveness * 100).toFixed(0)}%
+                          </span>
+                          <span className="px-2 py-1 bg-teal-100 text-teal-700 rounded-full">
+                            预计: {personalizedMemoryTip.estimatedTime}分钟
+                          </span>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -367,6 +537,47 @@ export default function Quiz() {
                     <p className="mt-3 text-center text-green-600 font-medium">
                       正确答案: {currentWord.word}
                     </p>
+                  )}
+
+                  {/* 个性化记忆技巧 - 答错时显示 */}
+                  {showResult && !isCorrect && showMemoryTip && (
+                    <div className="mt-4">
+                      {isLoadingPersonalized ? (
+                        <div className="p-4 bg-gradient-to-r from-green-50 to-teal-50 rounded-lg border border-teal-100">
+                          <div className="flex items-center justify-center gap-2 text-teal-600">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span className="text-sm font-medium">正在生成记忆技巧...</span>
+                          </div>
+                        </div>
+                      ) : personalizedMemoryTip ? (
+                        <div className="p-4 bg-gradient-to-r from-green-50 to-teal-50 rounded-lg border border-green-200">
+                          <div className="flex items-center gap-2 text-green-600 mb-2">
+                            <Lightbulb className="w-4 h-4" />
+                            <span className="text-sm font-medium">个性化记忆技巧</span>
+                            <Sparkles className="w-3 h-3" />
+                          </div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
+                              {personalizedMemoryTip.technique === 'association' && '联想记忆法'}
+                              {personalizedMemoryTip.technique === 'wordRoot' && '词根词缀法'}
+                              {personalizedMemoryTip.technique === 'scene' && '场景记忆法'}
+                              {personalizedMemoryTip.technique === 'story' && '故事记忆法'}
+                              {personalizedMemoryTip.technique === 'mnemonic' && '助记符法'}
+                            </span>
+                          </div>
+                          <p className="font-semibold text-gray-800 mb-2">{personalizedMemoryTip.title}</p>
+                          <p className="text-gray-700 leading-relaxed text-sm mb-2">{personalizedMemoryTip.content}</p>
+                          <div className="flex gap-3 text-xs">
+                            <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">
+                              有效性: {(personalizedMemoryTip.effectiveness * 100).toFixed(0)}%
+                            </span>
+                            <span className="px-2 py-1 bg-teal-100 text-teal-700 rounded-full">
+                              预计: {personalizedMemoryTip.estimatedTime}分钟
+                            </span>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
                   )}
                 </div>
 

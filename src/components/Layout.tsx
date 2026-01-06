@@ -11,7 +11,8 @@ import {
   X,
   Brain,
   Search,
-  Info
+  Info,
+  Sparkles,
 } from 'lucide-react'
 import logo from '/Muse.png'
 
@@ -23,6 +24,7 @@ const navItems = [
   { path: '/quiz', icon: Brain, label: '测验' },
   { path: '/wordbook', icon: Library, label: '词库' },
   { path: '/statistics', icon: BarChart3, label: '统计' },
+  { path: '/ai-profile', icon: Sparkles, label: 'AI画像' },
   { path: '/settings', icon: Settings, label: '设置' },
   { path: '/about', icon: Info, label: '关于' },
 ]

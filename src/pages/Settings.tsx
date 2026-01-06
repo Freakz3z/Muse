@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   User,
@@ -17,15 +18,18 @@ import {
   X,
   Settings as SettingsIcon,
   Cpu,
-  Sparkles
+  Sparkles,
+  TestTube
 } from 'lucide-react'
 import { useAppStore } from '../store'
 import { ShortcutSettings, defaultShortcuts } from '../types'
 import { aiService } from '../services/ai'
 import { AIConfig, AIProviderType, defaultAIConfig } from '../services/ai/types'
 import { getShortcutDisplay } from '../hooks/useShortcuts'
+import { updateAdaptiveConfig } from '../utils/spaced-repetition'
 
 export default function Settings() {
+  const navigate = useNavigate()
   const { settings, updateSettings, profile, updateProfile, createProfile } = useAppStore()
   const [nickname, setNickname] = useState(profile?.nickname || '')
   const [saved, setSaved] = useState(false)
@@ -85,6 +89,12 @@ export default function Settings() {
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle')
   const [aiSaved, setAiSaved] = useState(false)
 
+  // AI 自适应引擎开关状态
+  const [adaptiveEngineEnabled, setAdaptiveEngineEnabled] = useState(() => {
+    const saved = localStorage.getItem('adaptive_engine_enabled')
+    return saved ? JSON.parse(saved) : false
+  })
+
   // 保存 AI 配置
   const handleSaveAIConfig = () => {
     localStorage.setItem('ai_config', JSON.stringify(aiConfig))
@@ -122,7 +132,7 @@ export default function Settings() {
     setAiConfig(prev => ({ ...prev, ...updates }))
     setConnectionStatus('idle')
   }
-  
+
   // 快捷键编辑处理
   const handleShortcutKeyDown = useCallback((e: KeyboardEvent) => {
     if (!editingShortcut) return
@@ -644,6 +654,93 @@ export default function Settings() {
                     />
                   </button>
                 </div>
+
+                {/* AI 自适应学习引擎 */}
+                <div className="flex items-center justify-between p-4 bg-purple-50 rounded-xl border border-purple-100">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="font-bold text-purple-900">AI 自适应学习引擎</p>
+                      {adaptiveEngineEnabled && (
+                        <span className="px-2 py-0.5 bg-purple-500 text-white text-xs rounded-full font-medium">已启用</span>
+                      )}
+                    </div>
+                    <p className="text-purple-700/70 text-xs mt-1">
+                      基于AI分析学习行为，个性化预测最佳复习时间
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const newState = !adaptiveEngineEnabled;
+                      setAdaptiveEngineEnabled(newState);
+                      // 保存到localStorage
+                      localStorage.setItem('adaptive_engine_enabled', JSON.stringify(newState));
+                      // 更新自适应引擎配置
+                      updateAdaptiveConfig({ enableAI: newState });
+                    }}
+                    className={`w-12 h-6 rounded-full transition-colors ${
+                      adaptiveEngineEnabled ? 'bg-purple-500' : 'bg-gray-300'
+                    }`}
+                  >
+                    <motion.div
+                      animate={{ x: adaptiveEngineEnabled ? 24 : 2 }}
+                      className="w-5 h-5 bg-white rounded-full shadow"
+                    />
+                  </button>
+                </div>
+
+                {/* AI 自适应引擎说明 */}
+                {adaptiveEngineEnabled && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-4 border border-purple-100"
+                  >
+                    <h4 className="font-bold text-gray-800 mb-2 flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-purple-500" />
+                      AI 自适应引擎特性
+                    </h4>
+                    <ul className="space-y-1.5 text-xs text-gray-600">
+                      <li className="flex items-start gap-2">
+                        <span className="text-purple-500 font-bold">•</span>
+                        <span><strong>个性化遗忘曲线</strong>：根据您的记忆模式定制复习间隔</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-purple-500 font-bold">•</span>
+                        <span><strong>学习时段优化</strong>：考虑您的最佳学习时间和状态</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-purple-500 font-bold">•</span>
+                        <span><strong>情感状态感知</strong>：根据信心水平和动机调整难度</span>
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <span className="text-purple-500 font-bold">•</span>
+                        <span><strong>智能难度评估</strong>：动态评估单词难度并提供个性化建议</span>
+                      </li>
+                    </ul>
+                    <div className="mt-3 pt-3 border-t border-purple-200 space-y-2">
+                      <p className="text-[10px] text-gray-500">
+                        💡 系统会自动收集学习数据并持续优化预测准确性。如AI预测失败，将自动回退到传统SM-2算法。
+                      </p>
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <button
+                          onClick={() => navigate('/test-adaptive')}
+                          className="px-4 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-2"
+                        >
+                          <TestTube className="w-3.5 h-3.5" />
+                          测试AI引擎效果
+                        </button>
+                        <button
+                          onClick={() => navigate('/test-content')}
+                          className="px-4 py-2 bg-pink-100 hover:bg-pink-200 text-pink-700 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-2"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          测试内容生成
+                        </button>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
 
                 {aiConfig.enabled && (
                   <>

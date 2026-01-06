@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import { 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
+import { Link } from 'react-router-dom'
+import {
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
   ResponsiveContainer,
   AreaChart,
   Area,
@@ -12,110 +12,35 @@ import {
   Pie,
   Cell
 } from 'recharts'
-import { 
-  Calendar, 
-  TrendingUp, 
-  Target, 
+import {
+  Calendar,
+  TrendingUp,
   BookOpen,
   RefreshCw,
   Award,
-  Sparkles,
-  AlertTriangle,
-  Lightbulb,
+  Target,
   Clock,
-  Loader2,
-  CheckCircle2,
-  Star
+  Sparkles,
+  ArrowRight,
 } from 'lucide-react'
 import { useAppStore } from '../store'
 import { statsStorage } from '../storage'
 import { StudyStats, MasteryLevel } from '../types'
 import StatCard from '../components/StatCard'
-import { aiService } from '../services/ai'
-import { StudySuggestion } from '../services/ai/types'
 
 export default function Statistics() {
-  const { records, profile, words, currentBook } = useAppStore()
+  const { records, profile } = useAppStore()
   const [weeklyStats, setWeeklyStats] = useState<StudyStats[]>([])
   const [monthlyStats, setMonthlyStats] = useState<StudyStats[]>([])
-  const [isConfigured, setIsConfigured] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [suggestion, setSuggestion] = useState<StudySuggestion | null>(null)
 
   useEffect(() => {
     loadStats()
-    setIsConfigured(aiService.isConfigured())
   }, [])
 
   const loadStats = async () => {
     const stats = await statsStorage.getLast30Days()
     setMonthlyStats(stats)
     setWeeklyStats(stats.slice(-7))
-  }
-
-  // 计算学习统计数据（用于AI建议）
-  const calculateAIStats = () => {
-    const recordsArray = Array.from(records.values())
-    
-    const masteredWords = recordsArray.filter(r => r.easeFactor >= 2.5 && r.reviewCount >= 3).length
-    const learningWords = recordsArray.filter(r => r.reviewCount > 0 && (r.easeFactor < 2.5 || r.reviewCount < 3)).length
-    
-    const now = Date.now()
-    const reviewDueWords = recordsArray.filter(r => r.nextReviewAt <= now).length
-    
-    const totalReviews = recordsArray.reduce((sum: number, r) => sum + r.reviewCount, 0)
-    const averageAccuracy = totalReviews > 0 
-      ? recordsArray.reduce((sum: number, r) => sum + (r.easeFactor / 2.5), 0) / recordsArray.length
-      : 0
-
-    const studyDays = recordsArray.length > 0 
-      ? Math.ceil((now - Math.min(...recordsArray.map(r => r.lastReviewAt))) / (1000 * 60 * 60 * 24))
-      : 0
-
-    const weakRecords = recordsArray
-      .filter(r => r.easeFactor < 2.0 || r.reviewCount <= 1)
-      .slice(0, 10)
-    const weakWords = weakRecords
-      .map(r => words.find(w => w.id === r.wordId)?.word)
-      .filter(Boolean) as string[]
-
-    // 提取错题记录
-    const wrongRecords = recordsArray
-      .filter(r => r.wrongCount > 0)
-      .sort((a, b) => b.wrongCount - a.wrongCount)
-      .slice(0, 10)
-      .map(r => ({
-        word: words.find(w => w.id === r.wordId)?.word || '',
-        count: r.wrongCount
-      }))
-      .filter(r => r.word)
-
-    return {
-      totalWords: currentBook?.wordCount || 0,
-      masteredWords,
-      learningWords,
-      reviewDueWords,
-      averageAccuracy: Math.min(averageAccuracy, 1),
-      studyDays,
-      weakWords,
-      wrongRecords,
-    }
-  }
-
-  const handleGenerateSuggestion = async () => {
-    if (!isConfigured) return
-    
-    setIsLoading(true)
-    try {
-      const stats = calculateAIStats()
-      const result = await aiService.generateStudySuggestion(stats)
-      setSuggestion(result)
-    } catch (error) {
-      console.error('生成学习建议失败:', error)
-      alert('生成学习建议失败，请稍后重试')
-    } finally {
-      setIsLoading(false)
-    }
   }
 
   // 计算掌握度分布
@@ -242,6 +167,25 @@ export default function Statistics() {
           color="orange"
         />
       </div>
+
+      {/* AI画像入口 */}
+      <Link
+        to="/ai-profile"
+        className="block bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+              <Sparkles className="w-6 h-6 text-white" />
+            </div>
+            <div className="text-white">
+              <h3 className="text-lg font-semibold mb-1">查看你的AI画像</h3>
+              <p className="text-purple-100 text-sm">深度了解你的学习风格和记忆特征</p>
+            </div>
+          </div>
+          <ArrowRight className="w-6 h-6 text-white/80" />
+        </div>
+      </Link>
 
       {/* 图表区域 */}
       <div className="grid lg:grid-cols-2 gap-6">
@@ -423,7 +367,7 @@ export default function Statistics() {
             const total = stat.newWords + stat.reviewedWords
             const intensity = total === 0 ? 0 : total < 10 ? 1 : total < 20 ? 2 : total < 30 ? 3 : 4
             const colors = ['bg-gray-100', 'bg-green-200', 'bg-green-300', 'bg-green-400', 'bg-green-500']
-            
+
             return (
               <div
                 key={index}
@@ -445,178 +389,6 @@ export default function Statistics() {
           <span>多</span>
         </div>
       </div>
-
-      {/* AI 学习建议板块 */}
-      {isConfigured && (
-        <div className="bg-white rounded-xl p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-purple-500" />
-              AI 学习教练
-            </h3>
-            {!suggestion && !isLoading && (
-              <button
-                onClick={handleGenerateSuggestion}
-                className="px-4 py-2 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg text-sm font-medium hover:shadow-lg hover:shadow-purple-500/30 transition-all inline-flex items-center gap-2"
-              >
-                <Sparkles className="w-4 h-4" />
-                获取AI建议
-              </button>
-            )}
-          </div>
-
-          {isLoading ? (
-            <div className="py-8 text-center">
-              <Loader2 className="w-12 h-12 text-purple-500 animate-spin mx-auto mb-4" />
-              <p className="text-gray-600">AI 正在分析你的学习数据...</p>
-            </div>
-          ) : suggestion ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="space-y-4"
-            >
-              {/* 总结 */}
-              <div className="bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl p-5 text-white">
-                <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Star className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-1">学习总结</h4>
-                    <p className="text-white/90 text-sm">{suggestion.summary}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* 优势与不足 */}
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="bg-green-50 rounded-xl p-4">
-                  <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2 text-sm">
-                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                    你的优势
-                  </h4>
-                  <ul className="space-y-1.5">
-                    {suggestion.strengths.map((item, index) => (
-                      <li key={index} className="flex items-start gap-2 text-sm text-gray-600">
-                        <span className="text-green-500 mt-0.5">✓</span>
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="bg-orange-50 rounded-xl p-4">
-                  <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2 text-sm">
-                    <AlertTriangle className="w-4 h-4 text-orange-500" />
-                    待改进
-                  </h4>
-                  <ul className="space-y-1.5">
-                    {suggestion.weaknesses.map((item, index) => (
-                      <li key={index} className="flex items-start gap-2 text-sm text-gray-600">
-                        <span className="text-orange-500 mt-0.5">!</span>
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              {/* 学习建议 */}
-              <div className="bg-yellow-50 rounded-xl p-4">
-                <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2 text-sm">
-                  <Lightbulb className="w-4 h-4 text-yellow-500" />
-                  学习建议
-                </h4>
-                <div className="space-y-2">
-                  {suggestion.recommendations.map((item, index) => (
-                    <div key={index} className="flex items-start gap-2">
-                      <span className="w-5 h-5 bg-yellow-400 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0 mt-0.5">
-                        {index + 1}
-                      </span>
-                      <span className="text-sm text-gray-700">{item}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* 每日计划 */}
-              <div className="bg-blue-50 rounded-xl p-4">
-                <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2 text-sm">
-                  <Calendar className="w-4 h-4 text-blue-500" />
-                  建议每日计划
-                </h4>
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="text-center p-3 bg-white rounded-lg">
-                    <BookOpen className="w-6 h-6 text-blue-500 mx-auto mb-1" />
-                    <div className="text-xl font-bold text-blue-600">{suggestion.dailyPlan.newWords}</div>
-                    <div className="text-xs text-gray-500">新词数量</div>
-                  </div>
-                  <div className="text-center p-3 bg-white rounded-lg">
-                    <RefreshCw className="w-6 h-6 text-green-500 mx-auto mb-1" />
-                    <div className="text-xl font-bold text-green-600">{suggestion.dailyPlan.reviewWords}</div>
-                    <div className="text-xs text-gray-500">复习数量</div>
-                  </div>
-                  <div className="text-center p-3 bg-white rounded-lg">
-                    <Clock className="w-6 h-6 text-purple-500 mx-auto mb-1" />
-                    <div className="text-xl font-bold text-purple-600">{suggestion.dailyPlan.practiceTime}</div>
-                    <div className="text-xs text-gray-500">分钟/天</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 重点关注单词 */}
-              {suggestion.focusWords && suggestion.focusWords.length > 0 && (
-                <div className="bg-red-50 rounded-xl p-4">
-                  <h4 className="font-semibold text-gray-800 mb-2 flex items-center gap-2 text-sm">
-                    <Target className="w-4 h-4 text-red-500" />
-                    重点关注单词
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {suggestion.focusWords.map((word, index) => (
-                      <span
-                        key={index}
-                        className="px-2.5 py-1 bg-white text-red-600 rounded-lg text-xs font-medium"
-                      >
-                        {word}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 鼓励语 */}
-              <div className="bg-gradient-to-br from-yellow-50 to-orange-50 rounded-xl p-4 border border-yellow-100">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-yellow-400 rounded-full flex items-center justify-center flex-shrink-0">
-                    <span className="text-xl">💪</span>
-                  </div>
-                  <p className="text-gray-700 text-sm font-medium">{suggestion.encouragement}</p>
-                </div>
-              </div>
-
-              {/* 重新生成按钮 */}
-              <div className="text-center pt-2">
-                <button
-                  onClick={handleGenerateSuggestion}
-                  disabled={isLoading}
-                  className="px-4 py-2 text-purple-600 hover:text-purple-700 text-sm font-medium inline-flex items-center gap-2"
-                >
-                  <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-                  重新生成建议
-                </button>
-              </div>
-            </motion.div>
-          ) : (
-            <div className="py-8 text-center">
-              <Lightbulb className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500 text-sm mb-4">
-                AI 将分析你的学习进度、正确率和薄弱点，<br />
-                为你提供个性化的学习规划和建议
-              </p>
-            </div>
-          )}
-        </div>
-      )}
     </div>
   )
 }
