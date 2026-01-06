@@ -1287,39 +1287,58 @@ export default function Learn() {
       </AnimatePresence>
       </div>
 
-      {/* 侧边栏：已学单词列表 */}
+      {/* 侧边栏：已学单词列表 - 浮层设计 */}
       <AnimatePresence>
         {sidebarOpen && (
           <>
-            {/* 遮罩层 */}
+            {/* 模糊遮罩层 */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
               onClick={() => setSidebarOpen(false)}
-              className="fixed inset-0 bg-black/20 z-40"
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40"
             />
-            {/* 侧边栏 */}
+            {/* 浮动侧边栏 */}
             <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed right-0 top-0 h-full w-80 bg-white shadow-2xl z-50 overflow-hidden flex flex-col"
+              initial={{ x: '100%', opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: '100%', opacity: 0 }}
+              transition={{
+                type: 'spring',
+                damping: 25,
+                stiffness: 300,
+                opacity: { duration: 0.2 }
+              }}
+              className="fixed right-4 top-4 bottom-4 w-96 bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl z-50 overflow-hidden flex flex-col border border-white/20"
             >
+              {/* 渐变背景装饰 */}
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-50/50 via-white/50 to-purple-50/50 pointer-events-none" />
+              <div className="absolute top-0 right-0 w-64 h-64 bg-blue-400/10 rounded-full blur-3xl pointer-events-none" />
+              <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-400/10 rounded-full blur-3xl pointer-events-none" />
+
               {/* 侧边栏头部 */}
-              <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-                <h3 className="font-bold text-gray-800">已学单词</h3>
+              <div className="relative p-6 border-b border-gray-200/50 flex items-center justify-between bg-white/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
+                    <List className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-800 text-lg">已学单词</h3>
+                    <p className="text-xs text-gray-500">点击单词查看详情</p>
+                  </div>
+                </div>
                 <button
                   onClick={() => setSidebarOpen(false)}
-                  className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-gray-100/80 rounded-xl transition-all hover:scale-110"
                 >
-                  <ChevronRight className="w-5 h-5 text-gray-500" />
+                  <X className="w-5 h-5 text-gray-500" />
                 </button>
               </div>
 
               {/* 单词列表 */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              <div className="relative flex-1 overflow-y-auto p-4 space-y-3">
                 {(() => {
                   // 合并今天所有学过的单词
                   const todayLearned = loadTodayLearnedWords()
@@ -1346,31 +1365,35 @@ export default function Learn() {
                     return (
                       <motion.button
                         key={wordId}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.2 }}
                         onClick={() => viewLearnedWord(wordId)}
-                        className="w-full p-3 rounded-xl text-left transition-colors group bg-gray-50 hover:bg-blue-50 cursor-pointer"
+                        className="w-full p-4 rounded-2xl text-left transition-all group bg-white/80 hover:bg-white border border-gray-200/50 hover:border-blue-300/50 hover:shadow-lg hover:shadow-blue-500/10 cursor-pointer backdrop-blur-sm"
                       >
-                        <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-medium text-gray-800 truncate">{word.word}</span>
-                              <span className={`text-xs px-1.5 py-0.5 rounded ${
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="font-bold text-gray-800 text-lg">{word.word}</span>
+                              <span className={`text-xs px-2 py-1 rounded-lg font-medium ${
                                 known === true
-                                  ? 'bg-green-100 text-green-600'
-                                  : 'bg-orange-100 text-orange-600'
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-orange-100 text-orange-700'
                               }`}>
-                                {known === true ? '认识' : '不认识'}
+                                {known === true ? '✓ 认识' : '✗ 不认识'}
                               </span>
                               {!isInCurrentSession && (
-                                <span className="text-xs px-1.5 py-0.5 rounded bg-purple-100 text-purple-600">
-                                  之前学习
+                                <span className="text-xs px-2 py-1 rounded-lg bg-purple-100 text-purple-700 font-medium">
+                                  之前
                                 </span>
                               )}
                             </div>
-                            <div className="text-xs text-gray-500 mb-1">{partOfSpeech}</div>
+                            <div className="text-xs text-gray-500 mb-1 font-medium">{partOfSpeech}</div>
                             {meanings && (
-                              <div className="text-sm text-gray-600 line-clamp-2">{meanings}</div>
+                              <div className="text-sm text-gray-600 line-clamp-2 leading-relaxed">{meanings}</div>
                             )}
                           </div>
+                          <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-500 group-hover:translate-x-1 transition-all flex-shrink-0 mt-1" />
                         </div>
                       </motion.button>
                     )
@@ -1378,13 +1401,29 @@ export default function Learn() {
                 })()}
               </div>
 
-              {/* 侧边栏底部 */}
-              <div className="p-4 border-t border-gray-100 bg-gray-50">
-                <div className="text-xs text-gray-500 text-center">
-                  {(() => {
-                    const todayLearned = loadTodayLearnedWords()
-                    return `今日共学习 ${todayLearned.size} 个单词`
-                  })()}
+              {/* 侧边栏底部 - 统计信息 */}
+              <div className="relative p-5 border-t border-gray-200/50 bg-gradient-to-r from-blue-50/50 to-purple-50/50 backdrop-blur-sm">
+                <div className="flex items-center justify-center gap-6">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                      {(() => {
+                        const todayLearned = loadTodayLearnedWords()
+                        return todayLearned.size
+                      })()}
+                    </div>
+                    <div className="text-xs text-gray-600 mt-1">今日学习</div>
+                  </div>
+                  <div className="w-px h-10 bg-gray-300/50" />
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-600">
+                      {(() => {
+                        const todayLearned = loadTodayLearnedWords()
+                        const knownCount = Array.from(todayLearned.values()).filter(w => w.known === true).length
+                        return knownCount
+                      })()}
+                    </div>
+                    <div className="text-xs text-gray-600 mt-1">已掌握</div>
+                  </div>
                 </div>
               </div>
             </motion.div>
