@@ -84,6 +84,7 @@ export default function Review() {
   const [isProcessing, setIsProcessing] = useState(false)
   // 使用 Map 追踪每个单词的最终状态：'remembered' | 'forgot'
   const [wordResults, setWordResults] = useState<Map<string, 'remembered' | 'forgot'>>(new Map())
+  const [showRepeatHint, setShowRepeatHint] = useState(false) // 显示重考提示
   const isProcessingRef = useRef(false)
 
   // 个性化内容状态
@@ -201,6 +202,10 @@ export default function Review() {
       // 优化复习逻辑：如果不记得或觉得困难，加入到本轮复习队列末尾
       if (actualDifficulty === 'again' || actualDifficulty === 'hard') {
         setWords(prev => [...prev, currentWord])
+        // 显示重考提示
+        setShowRepeatHint(true)
+        // 2秒后自动隐藏提示
+        setTimeout(() => setShowRepeatHint(false), 2000)
       }
 
       await updateTodayStats({
@@ -533,6 +538,23 @@ export default function Review() {
                       <p className="text-gray-700 italic">"{currentWord.examples[0]}"</p>
                     </div>
                   )}
+
+                  {/* 难词重考提示 */}
+                  <AnimatePresence>
+                    {showRepeatHint && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="mt-4 p-3 bg-orange-50 border border-orange-200 rounded-lg"
+                      >
+                        <div className="flex items-center gap-2 text-orange-700 text-sm">
+                          <RefreshCw className="w-4 h-4" />
+                          <span className="font-medium">这个词将在稍后再次出现</span>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   {/* 个性化记忆技巧区域 */}
                   {!showPersonalizedContent && !isLoadingPersonalized && (

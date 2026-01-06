@@ -58,8 +58,8 @@ const recordQuizEvent = async (
 }
 
 export default function Quiz() {
-  const { words, records, settings } = useAppStore()
-  
+  const { words, records, settings, updateRecord } = useAppStore()
+
   const [mode, setMode] = useState<QuizMode | null>(null)
   const [quizWords, setQuizWords] = useState<Word[]>([])
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -143,8 +143,12 @@ export default function Quiz() {
       quizWords.length
     )
 
-    // 如果答错,加载个性化记忆技巧
+    // 如果答错,更新学习记录并加载个性化记忆技巧
     if (!correct) {
+      // 答错时更新学习记录,标记为需复习(quality=1,表示"again")
+      updateRecord(currentWord.id, false, 1).catch(err => {
+        console.error('Failed to update record for quiz wrong answer:', err)
+      })
       loadPersonalizedMemoryTip(currentWord)
     }
 
@@ -169,8 +173,12 @@ export default function Quiz() {
       quizWords.length
     )
 
-    // 如果答错,加载个性化记忆技巧
+    // 如果答错,更新学习记录并加载个性化记忆技巧
     if (!correct) {
+      // 答错时更新学习记录,标记为需复习(quality=1,表示"again")
+      updateRecord(currentWord.id, false, 1).catch(err => {
+        console.error('Failed to update record for quiz wrong answer:', err)
+      })
       loadPersonalizedMemoryTip(currentWord)
     }
 

@@ -722,21 +722,43 @@ export default function Learn() {
           })()}
         </div>
 
-        {/* 返回当前学习按钮 */}
+        {/* 返回当前学习按钮 + 历史模式提示 */}
         {isViewingHistory && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-4"
+            className="space-y-3 mb-4"
           >
-            <button
-              onClick={() => setViewingIndex(null)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 transition-colors text-sm font-medium"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              <span>返回当前学习</span>
-              <span className="text-xs opacity-60">{getShortcutDisplay(settings.shortcuts?.showAnswer || 'Space')}</span>
-            </button>
+            {/* 历史模式提示横幅 */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-100">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <List className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">正在浏览历史记录</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      快捷键已切换:
+                      <span className="ml-2 font-mono text-blue-600 bg-white px-2 py-0.5 rounded">
+                        D = 下一个
+                      </span>
+                      <span className="ml-2 font-mono text-blue-600 bg-white px-2 py-0.5 rounded">
+                        A = 上一个
+                      </span>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setViewingIndex(null)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors text-sm font-medium shadow-sm"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>返回</span>
+                  <span className="text-xs opacity-80">{getShortcutDisplay(settings.shortcuts?.showAnswer || 'Space')}</span>
+                </button>
+              </div>
+            </div>
           </motion.div>
         )}
 
