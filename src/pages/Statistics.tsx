@@ -168,7 +168,7 @@ export default function Statistics() {
         />
       </div>
 
-      {/* AI画像入口 */}
+      {/* 画像入口 */}
       <Link
         to="/ai-profile"
         className="block bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
@@ -179,7 +179,7 @@ export default function Statistics() {
               <Sparkles className="w-6 h-6 text-white" />
             </div>
             <div className="text-white">
-              <h3 className="text-lg font-semibold mb-1">查看你的AI画像</h3>
+              <h3 className="text-lg font-semibold mb-1">查看你的画像</h3>
               <p className="text-purple-100 text-sm">深度了解你的学习风格和记忆特征</p>
             </div>
           </div>

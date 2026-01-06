@@ -79,7 +79,7 @@ export default function AIProfile() {
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <RefreshCw className="w-8 h-8 animate-spin text-purple-500 mx-auto mb-4" />
-          <p className="text-gray-500">正在加载AI画像...</p>
+          <p className="text-gray-500">正在加载画像...</p>
         </div>
       </div>
     )
@@ -142,7 +142,7 @@ export default function AIProfile() {
         <div>
           <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3">
             <Sparkles className="w-8 h-8 text-purple-500" />
-            我的AI画像
+            我的画像
           </h1>
           <p className="text-gray-500 mt-1">深度理解你的学习特征，实现真正的个性化学习</p>
         </div>
@@ -602,7 +602,7 @@ export default function AIProfile() {
         <div className="flex items-start gap-4">
           <Sparkles className="w-6 h-6 flex-shrink-0 mt-1" />
           <div>
-            <h3 className="text-lg font-semibold mb-2">AI画像会持续进化</h3>
+            <h3 className="text-lg font-semibold mb-2">画像会持续进化</h3>
             <p className="text-purple-100 text-sm">
               随着你的学习，AI会不断更新你的画像，提供越来越精准的个性化建议。
               每5个学习事件会触发一次AI分析，确保画像始终反映你的最新状态。
