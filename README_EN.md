@@ -25,8 +25,14 @@
   <img src="https://img.shields.io/badge/React-18.2.0-61DAFB?logo=react" alt="React">
   <img src="https://img.shields.io/badge/TypeScript-5.3-3178C6?logo=typescript" alt="TypeScript">
   <img src="https://img.shields.io/badge/Vite-5.0-646CFF?logo=vite" alt="Vite">
-  <img src="https://img.shields.io/badge/Version-1.6.2-blue" alt="Version">
+  <img src="https://img.shields.io/badge/Version-1.6.3-blue" alt="Version">
   <img src="https://img.shields.io/badge/License-Apache_2.0-blue" alt="License">
+</p>
+
+<p align="center">
+  This project is accelerated, computed and protected by Alibaba Cloud ESA
+  <br>
+  <img src="AlibabaESA.png" alt="Alibaba ESA" width="600">
 </p>
 
 ---
@@ -41,8 +47,10 @@
 - 📚 **Scientific Memory Algorithm** - Spaced repetition system based on SM-2 Ebbinghaus forgetting curve
 - 🤖 **AI Deep Analysis** - Provides definitions, contextual examples, and memory techniques
 - 🎯 **Smart Quiz System** - AI generates dynamic questions adapted to your vocabulary level
+- 🎮 **Game Center** - Learn through play with letter connection games and save discovered words
 - 📊 **Visual Statistics** - Track progress, accuracy, and memory curves at a glance
 - ⌨️ **Full Keyboard Support** - Efficient keyboard shortcuts for productive learning
+- 🔄 **Auto Update Check** - Automatically checks for updates on startup
 
 ## ✨ Features
 
@@ -214,6 +222,7 @@ Muse uses the classic SM-2 algorithm to optimize review timing:
 | Shortcut | Function |
 |----------|----------|
 | `Ctrl + Shift + M` | Show/Hide main window |
+| `Alt + X` | Show/Hide floating word lookup window (customizable) |
 
 ### Learning Interface (Customizable)
 
@@ -244,6 +253,8 @@ Muse uses the classic SM-2 algorithm to optimize review timing:
 - 💜 Purple color scheme for AI features
 - 📱 Responsive layout
 - 🎯 Unified learning/review interface style
+- 🪟 Floating Word Lookup Window - Quick word lookup, add anytime
+- 📋 Beautiful changelog display
 
 ## 📊 Data Storage
 

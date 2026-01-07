@@ -25,7 +25,7 @@
   <img src="https://img.shields.io/badge/React-18.2.0-61DAFB?logo=react" alt="React">
   <img src="https://img.shields.io/badge/TypeScript-5.3-3178C6?logo=typescript" alt="TypeScript">
   <img src="https://img.shields.io/badge/Vite-5.0-646CFF?logo=vite" alt="Vite">
-  <img src="https://img.shields.io/badge/Version-1.6.2-blue" alt="Version">
+  <img src="https://img.shields.io/badge/Version-1.6.3-blue" alt="Version">
   <img src="https://img.shields.io/badge/License-Apache_2.0-blue" alt="License">
 </p>
 
@@ -47,6 +47,7 @@
 - 📚 **科学记忆算法** - 基于 SM-2 艾宾浩斯遗忘曲线的间隔重复系统
 - 🤖 **AI 深度分析** - 提供词义解释、场景例句、记忆技巧
 - 🎯 **智能测验系统** - AI 根据你的词汇水平实时生成动态题目
+- 🎮 **游戏中心** - 通过字母连线游戏边玩边学,保存发现的单词
 - 📊 **可视化统计** - 学习进度、正确率、记忆曲线一目了然
 - ⌨️ **完整快捷键** - 高效的键盘操作,提升学习效率
 - 🔄 **自动更新检查** - 启动时自动检查更新,支持手动检查最新版本
@@ -137,66 +138,6 @@ npm run electron:build
 | **动画** | Framer Motion |
 | **图标** | Lucide React |
 
-## 📁 项目结构
-
-```
-Muse/
-├── electron/              # Electron 主进程
-│   ├── main.ts           # 主进程入口
-│   └── preload.ts        # 预加载脚本
-├── src/
-│   ├── components/       # 通用组件
-│   │   ├── ProgressBar.tsx      # 进度条组件
-│   │   ├── WordCard.tsx         # 单词卡片
-│   │   ├── AIAssistant.tsx      # AI 助手组件
-│   │   └── StudyPlanModal.tsx   # 学习计划弹窗
-│   ├── pages/            # 页面组件
-│   │   ├── Home.tsx      # 首页
-│   │   ├── Learn.tsx     # 学习页面
-│   │   ├── Review.tsx    # 复习页面
-│   │   ├── Quiz.tsx      # 测验页面
-│   │   ├── AIQuiz.tsx    # AI 测验页面
-│   │   ├── AICoach.tsx   # AI 教练页面
-│   │   ├── WordBook.tsx  # 词库管理
-│   │   ├── Statistics.tsx # 统计页面
-│   │   ├── Settings.tsx  # 设置页面
-│   │   ├── About.tsx     # 关于页面
-│   │   └── SearchPage.tsx # 搜索单词
-│   ├── services/
-│   │   ├── ai/           # AI 服务
-│   │   │   ├── index.ts  # AI 服务核心
-│   │   │   └── types.ts  # AI 类型定义
-│   │   └── dictionary/   # 词典 API 服务
-│   ├── store/            # Zustand 状态管理
-│   ├── storage/          # IndexedDB 数据存储
-│   ├── hooks/            # 自定义 Hooks
-│   │   └── useShortcuts.ts  # 快捷键管理
-│   ├── types/            # TypeScript 类型定义
-│   ├── utils/            # 工具函数
-│   │   └── spaced-repetition.ts  # SM-2 算法
-│   └── data/             # 内置数据
-└── package.json
-```
-
-## 🎯 核心算法
-
-### SM-2 间隔重复算法
-
-Muse 使用经典的 SM-2 算法来优化复习时机:
-
-- **易度因子 (EF)**: 1.3 - 2.5,根据回答质量动态调整
-- **间隔 (I)**: 每次复习后的间隔天数
-- **下次复习时间**: 根据当前间隔和易度因子计算
-
-### 四级评分系统
-
-| 评分 | 含义 | 质量 |
-|------|------|------|
-| 太简单 | 完全掌握 | 5 |
-| 记住了 | 基本掌握 | 4 |
-| 有点难 | 有些模糊 | 3 |
-| 忘记了 | 完全忘记 | 1 |
-
 ## 🤖 AI 配置
 
 ### 使用 OpenAI / Claude / Gemini
@@ -237,7 +178,6 @@ Muse 使用经典的 SM-2 算法来优化复习时机:
 
 | 快捷键 | 功能 |
 |--------|------|
-| `1` | 太简单 |
 | `2` | 记住了 |
 | `3` | 有点难 |
 | `4` | 忘记了 |
@@ -260,19 +200,6 @@ Muse 使用经典的 SM-2 算法来优化复习时机:
 - **本地存储**: 使用 IndexedDB,所有数据保存在本地
 - **数据安全**: 支持词库 JSON 导出/导入
 - **隐私保护**: 无需联网即可使用基础功能(AI 功能除外)
-
-## 🐛 已知问题
-
-- Web 版本无法使用系统托盘和全局快捷键
-- 首次启动时加载速度较慢(正在优化)
-
-## 📝 开发计划
-
-- [ ] 云端数据同步
-- [ ] 更多词库支持
-- [ ] 学习社区功能
-- [ ] 语音识别练习
-- [ ] 移动端适配
 
 ## 🤝 参与贡献
 
