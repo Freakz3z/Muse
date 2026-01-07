@@ -48,6 +48,12 @@ export class LearningCoach {
       return null
     }
 
+    // 最少学习5个词后才进行检查（避免学1个词就触发）
+    const totalAttempts = metrics.correctCount + metrics.incorrectCount
+    if (totalAttempts < 5) {
+      return null
+    }
+
     // 优先级1: 检测疲劳
     const fatigueIntervention = this.checkFatigue(metrics, profile)
     if (fatigueIntervention) {
@@ -81,6 +87,8 @@ export class LearningCoach {
 
   /**
    * 检测疲劳 - 基于学习时长、错误率、反应时间
+   *
+   * 优化：增加最小学习词数要求
    */
   private checkFatigue(metrics: LearningSessionMetrics, _profile: AILearnerProfile): CoachIntervention | null {
     const sessionMinutes = metrics.sessionDuration / (1000 * 60)
@@ -88,11 +96,16 @@ export class LearningCoach {
     const accuracy = totalAttempts > 0 ? metrics.correctCount / totalAttempts : 1
     const avgResponseTimeSeconds = metrics.averageResponseTime / 1000
 
+    // 至少学习5个词才检查疲劳
+    if (totalAttempts < 5) {
+      return null
+    }
+
     // 疲劳指标
-    const isLongSession = sessionMinutes > 25 // 超过25分钟
-    const isHighErrorRate = totalAttempts > 0 && accuracy < 0.6 // 正确率低于60%
-    const isSlowResponse = avgResponseTimeSeconds > 5 // 平均反应时间超过5秒
-    const isConsecutiveErrors = metrics.consecutiveIncorrect >= 3 // 连续错误3次
+    const isLongSession = sessionMinutes > 30 // 超过30分钟（从25提高到30）
+    const isHighErrorRate = totalAttempts >= 10 && accuracy < 0.5 // 至少10个词且正确率低于60%（从0.6改到0.5）
+    const isSlowResponse = totalAttempts >= 10 && avgResponseTimeSeconds > 6 // 至少10个词且反应时间超过6秒（从5秒提高）
+    const isConsecutiveErrors = metrics.consecutiveIncorrect >= 3 // 连续错误3次（保持）
 
     let fatigueScore = 0
     if (isLongSession) fatigueScore += 2
@@ -135,15 +148,17 @@ export class LearningCoach {
 
   /**
    * 检测困难模式 - 基于错误率、连续错误、特定词类型
+   *
+   * 优化：提高触发门槛，避免过早建议降低难度
    */
   private checkDifficulty(metrics: LearningSessionMetrics, _profile: AILearnerProfile): CoachIntervention | null {
     const totalAttempts = metrics.correctCount + metrics.incorrectCount
     const accuracy = totalAttempts > 0 ? metrics.correctCount / totalAttempts : 1
 
-    // 困难指标
-    const isLowAccuracy = totalAttempts > 0 && accuracy < 0.5 // 整体正确率低于50%
-    const isHighRecentErrors = metrics.recentErrors >= 5 // 最近10个词错5个以上
-    const isConsecutiveErrors = metrics.consecutiveIncorrect >= 4 // 连续错误4次
+    // 困难指标（更严格的条件）
+    const isLowAccuracy = totalAttempts >= 10 && accuracy < 0.4 // 至少10个词且正确率低于40%
+    const isHighRecentErrors = totalAttempts >= 10 && metrics.recentErrors >= 7 // 至少10个词且最近错7个以上
+    const isConsecutiveErrors = metrics.consecutiveIncorrect >= 5 // 连续错误5次（保持不变）
 
     if (isLowAccuracy || isHighRecentErrors || isConsecutiveErrors) {
       return {
