@@ -1,0 +1,11 @@
+{
+  "assets": "dist",
+  "routes": [
+    {
+      "path": "/*",
+      "target": "/index.html"
+    }
+  ],
+  "env": {
+  }
+}
