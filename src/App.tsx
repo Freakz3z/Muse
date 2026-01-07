@@ -20,7 +20,12 @@ import AIProfile from './pages/AIProfile'
 import FloatingWindow from './pages/FloatingWindow'
 import TestAdaptiveEngine from './pages/TestAdaptiveEngine'
 import TestContentGenerator from './pages/TestContentGenerator'
-import SplashScreen from './components/SplashScreen'
+import CardGame from './pages/CardGame'
+import GameHub from './pages/GameHub'
+import LearningHub from './pages/LearningHub'
+import Profile from './pages/Profile'
+import Auth from './pages/Auth'
+import StarFieldSplashScreen from './components/SplashScreen/StarField'
 
 const logger = createLogger('App')
 
@@ -31,6 +36,7 @@ function App() {
   const initialize = useAppStore((state) => state.initialize)
   const isLoading = useAppStore((state) => state.isLoading)
   const syncBooks = useAppStore((state) => state.syncBooks)
+  const [splashComplete, setSplashComplete] = useState(false)
 
   // 更新通知状态
   const [updateInfo, setUpdateInfo] = useState<any>(null)
@@ -105,20 +111,31 @@ function App() {
   return (
     <ErrorBoundary>
       <AnimatePresence mode="wait">
-        {isLoading && <SplashScreen key="splash" />}
+        {!splashComplete && (
+          <StarFieldSplashScreen
+            key="splash"
+            isReady={!isLoading}
+            onEnter={() => setSplashComplete(true)}
+          />
+        )}
       </AnimatePresence>
 
-      {!isLoading && (
+      {splashComplete && (
         <Routes>
+          <Route path="/auth" element={<Auth />} />
           <Route path="/" element={<Layout />}>
             <Route index element={<Home />} />
+            <Route path="learning" element={<LearningHub />} />
             <Route path="learn" element={<Learn />} />
             <Route path="review" element={<Review />} />
             <Route path="quiz" element={<AIQuiz />} />
             <Route path="search" element={<SearchPage />} />
+            <Route path="games" element={<GameHub />} />
+            <Route path="card-game" element={<CardGame />} />
             <Route path="wordbook" element={<WordBook />} />
             <Route path="statistics" element={<Statistics />} />
             <Route path="ai-profile" element={<AIProfile />} />
+            <Route path="profile" element={<Profile />} />
             <Route path="test-adaptive" element={<TestAdaptiveEngine />} />
             <Route path="test-content" element={<TestContentGenerator />} />
             <Route path="settings" element={<Settings />} />

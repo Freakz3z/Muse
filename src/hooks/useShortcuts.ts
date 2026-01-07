@@ -116,6 +116,7 @@ interface ShortcutHandlers {
   playAudio?: () => void
   showAIAnalysis?: () => void
   showPersonalizedAI?: () => void
+  nextQuestion?: () => void
   rateEasy?: () => void
   rateGood?: () => void
   rateHard?: () => void
@@ -181,6 +182,9 @@ export function useShortcuts(handlers: ShortcutHandlers, enabled: boolean = true
       } else if (matchShortcut(currentShortcuts.showPersonalizedAI, e) && currentHandlers.showPersonalizedAI) {
         e.preventDefault()
         currentHandlers.showPersonalizedAI()
+      } else if (matchShortcut(currentShortcuts.nextQuestion, e) && currentHandlers.nextQuestion) {
+        e.preventDefault()
+        currentHandlers.nextQuestion()
       } else if (matchShortcut(currentShortcuts.rateEasy, e) && currentHandlers.rateEasy) {
         e.preventDefault()
         currentHandlers.rateEasy()

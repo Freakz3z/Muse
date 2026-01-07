@@ -761,3 +761,7 @@ ${i > 0 ? `注意：这是第 ${i + 1} 批单词，请不要与之前的单词�
 
 // 单例
 export const aiService = new AIService();
+
+// 导出字母连线游戏AI服务
+export { letterLinkAIService } from './LetterLinkAIService'
+export type { LetterGridGeneration } from './LetterLinkAIService'

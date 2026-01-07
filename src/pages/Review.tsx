@@ -15,9 +15,6 @@ import { getQualityFromResponse } from '../utils/spaced-repetition'
 import { useShortcuts, getShortcutDisplay } from '../hooks/useShortcuts'
 import { voiceService } from '../services/voice'
 import { getProfileManager } from '../services/ai-core'
-import { personalizedContentLoader } from '../utils/personalized-content-helper'
-import type { GeneratedMemoryTip } from '../types/personalized-content'
-import { Sparkles, Lightbulb, Loader2 } from 'lucide-react'
 
 type ReviewMode = 'smart' | 'quick'
 
@@ -87,11 +84,6 @@ export default function Review() {
   const [showRepeatHint, setShowRepeatHint] = useState(false) // 显示重考提示
   const isProcessingRef = useRef(false)
 
-  // 个性化内容状态
-  const [personalizedMemoryTip, setPersonalizedMemoryTip] = useState<GeneratedMemoryTip | null>(null)
-  const [showPersonalizedContent, setShowPersonalizedContent] = useState(false)
-  const [isLoadingPersonalized, setIsLoadingPersonalized] = useState(false)
-
   const currentWord = words[currentIndex]
 
   useEffect(() => {
@@ -104,7 +96,7 @@ export default function Review() {
     let reviewWords: Word[] = []
 
     if (reviewMode === 'smart') {
-      // 智能复习模式：使用 SM-2 算法，只获取到期的单词
+      // 智能复习模式：使用 AI自适应算法，只获取到期的单词
       reviewWords = await getWordsToReview()
     } else {
       // 快速复习模式：获取所有学过的单词
@@ -223,10 +215,6 @@ export default function Review() {
     if (currentIndex < words.length - 1) {
       setCurrentIndex(i => i + 1)
       setShowAnswer(false)
-      // 重置个性化内容
-      setPersonalizedMemoryTip(null)
-      setShowPersonalizedContent(false)
-      setIsLoadingPersonalized(false)
     } else {
       const duration = Math.round((Date.now() - sessionStartTime) / 60000)
       updateTodayStats({
@@ -245,49 +233,6 @@ export default function Review() {
     }
     setShowAnswer(prev => !prev)
   }, [showAnswer])
-
-  // 加载个性化记忆技巧
-  const loadPersonalizedMemoryTip = useCallback(async () => {
-    if (!currentWord) return
-
-    // 检查 AI 配置
-    const aiConfig = JSON.parse(localStorage.getItem('ai_config') || '{}')
-    if (!aiConfig.enabled) {
-      return
-    }
-
-    setIsLoadingPersonalized(true)
-    setShowPersonalizedContent(true)
-
-    try {
-      // 获取用户画像
-      const profileManager = getProfileManager()
-      const profile = await profileManager.getProfile()
-
-      if (!profile) {
-        console.warn('用户画像未创建,无法生成个性化内容')
-        setIsLoadingPersonalized(false)
-        return
-      }
-
-      // 只加载记忆技巧(复习场景最需要)
-      const content = await personalizedContentLoader.loadContentForWord(
-        currentWord,
-        profile,
-        {
-          loadExamples: false,
-          loadMemoryTip: true,
-          loadExplanation: false,
-        }
-      )
-
-      setPersonalizedMemoryTip(content.memoryTip)
-    } catch (error) {
-      console.error('加载个性化记忆技巧失败:', error)
-    } finally {
-      setIsLoadingPersonalized(false)
-    }
-  }, [currentWord])
 
   // 快捷键处理函数
   const handleShortcutEasy = useCallback(() => {
@@ -455,7 +400,7 @@ export default function Review() {
                 <div className="text-left">
                   <div className={`font-semibold text-sm ${reviewMode === 'smart' ? 'text-blue-600' : 'text-gray-700'}`}>智能复习</div>
                   <div className={`text-xs ${reviewMode === 'smart' ? 'text-blue-500' : 'text-gray-500'}`}>
-                    SM-2 算法
+                    AI自适应算法
                   </div>
                 </div>
               </div>
@@ -555,58 +500,6 @@ export default function Review() {
                       </motion.div>
                     )}
                   </AnimatePresence>
-
-                  {/* 个性化记忆技巧区域 */}
-                  {!showPersonalizedContent && !isLoadingPersonalized && (
-                    <div className="mt-4">
-                      <button
-                        onClick={loadPersonalizedMemoryTip}
-                        className="w-full px-4 py-3 bg-gradient-to-r from-green-50 to-teal-50 hover:from-green-100 hover:to-teal-100 text-green-700 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 border-2 border-dashed border-green-200 hover:border-green-300"
-                      >
-                        <Lightbulb className="w-4 h-4" />
-                        显示记忆技巧
-                        <Sparkles className="w-4 h-4" />
-                      </button>
-                    </div>
-                  )}
-
-                  {isLoadingPersonalized && (
-                    <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-teal-50 rounded-lg border border-teal-100">
-                      <div className="flex items-center justify-center gap-2 text-teal-600">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span className="text-sm font-medium">正在生成记忆技巧...</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {personalizedMemoryTip && (
-                    <div className="mt-4 p-4 bg-gradient-to-r from-green-50 to-teal-50 rounded-lg border border-green-200">
-                      <div className="flex items-center gap-2 text-green-600 mb-2">
-                        <Lightbulb className="w-4 h-4" />
-                        <span className="text-sm font-medium">个性化记忆技巧</span>
-                        <Sparkles className="w-3 h-3" />
-                      </div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full">
-                          {personalizedMemoryTip.technique === 'association' && '联想记忆法'}
-                          {personalizedMemoryTip.technique === 'wordRoot' && '词根词缀法'}
-                          {personalizedMemoryTip.technique === 'scene' && '场景记忆法'}
-                          {personalizedMemoryTip.technique === 'story' && '故事记忆法'}
-                          {personalizedMemoryTip.technique === 'mnemonic' && '助记符法'}
-                        </span>
-                      </div>
-                      <p className="font-semibold text-gray-800 mb-2">{personalizedMemoryTip.title}</p>
-                      <p className="text-gray-700 leading-relaxed text-sm mb-2">{personalizedMemoryTip.content}</p>
-                      <div className="flex gap-3 text-xs">
-                        <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full">
-                          有效性: {(personalizedMemoryTip.effectiveness * 100).toFixed(0)}%
-                        </span>
-                        <span className="px-2 py-1 bg-teal-100 text-teal-700 rounded-full">
-                          预计: {personalizedMemoryTip.estimatedTime}分钟
-                        </span>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </motion.div>
             )}

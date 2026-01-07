@@ -467,7 +467,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   
   loadSettings: async () => {
-    const settings = await settingsStorage.get();
+    const savedSettings = await settingsStorage.get();
+    // 确保 shortcuts 字段存在，如果不存在则使用默认值
+    const settings = {
+      ...getDefaultSettings(),
+      ...savedSettings,
+      shortcuts: {
+        ...defaultShortcuts,
+        ...savedSettings?.shortcuts
+      }
+    };
     set({ settings });
   },
   

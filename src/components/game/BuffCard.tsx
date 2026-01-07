@@ -6,10 +6,12 @@
 import { motion } from 'framer-motion'
 import { getBuffDisplay } from '../../data/card-buffs'
 import type { Buff } from '../../types/card-game'
+import { Info } from 'lucide-react'
 
 interface BuffCardProps {
   buff: Buff
   onClick?: () => void
+  onInfoClick?: () => void
   disabled?: boolean
   size?: 'small' | 'medium' | 'large'
   showRarity?: boolean
@@ -18,6 +20,7 @@ interface BuffCardProps {
 export default function BuffCard({
   buff,
   onClick,
+  onInfoClick,
   disabled = false,
   size = 'medium',
   showRarity = true,
@@ -36,24 +39,38 @@ export default function BuffCard({
     large: 'text-5xl',
   }
 
+  const handleCardClick = () => {
+    if (!disabled && onClick) {
+      onClick()
+    }
+  }
+
+  const handleInfoClick = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (onInfoClick) {
+      onInfoClick()
+    }
+  }
+
   return (
-    <motion.button
-      whileHover={{ scale: disabled ? 1 : 1.05, y: disabled ? 0 : -5 }}
-      whileTap={{ scale: disabled ? 1 : 0.95 }}
-      onClick={disabled ? undefined : onClick}
-      disabled={disabled}
-      className={`
-        relative overflow-hidden rounded-xl shadow-lg
-        bg-gradient-to-br ${display.rarityGradient}
-        ${sizeClasses[size]}
-        ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
-        transition-all duration-200
-      `}
-      style={{
-        borderColor: display.rarityColor,
-        borderWidth: '2px',
-      }}
-    >
+    <div className="relative">
+      <motion.button
+        whileHover={{ scale: disabled ? 1 : 1.05, y: disabled ? 0 : -5 }}
+        whileTap={{ scale: disabled ? 1 : 0.95 }}
+        onClick={handleCardClick}
+        disabled={disabled}
+        className={`
+          relative overflow-hidden rounded-xl shadow-lg
+          bg-gradient-to-br ${display.rarityGradient}
+          ${sizeClasses[size]}
+          ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
+          transition-all duration-200
+        `}
+        style={{
+          borderColor: display.rarityColor,
+          borderWidth: '2px',
+        }}
+      >
       {/* 稀有度光晕 */}
       {showRarity && (
         <div
@@ -78,9 +95,7 @@ export default function BuffCard({
 
         {/* 稀有度标签 */}
         {showRarity && (
-          <div
-            className="text-white text-xs px-2 py-0.5 rounded-full bg-black/30"
-          >
+          <div className="text-white text-xs px-2 py-0.5 rounded-full bg-black/30">
             {display.rarity === 'common' && '普通'}
             {display.rarity === 'rare' && '稀有'}
             {display.rarity === 'epic' && '史诗'}
@@ -100,6 +115,16 @@ export default function BuffCard({
           repeatDelay: 3,
         }}
       />
+
+      {/* 信息图标 - 点击查看详情 */}
+      <button
+        onClick={handleInfoClick}
+        className="absolute top-1 right-1 p-1.5 bg-black/30 rounded-full hover:bg-black/50 transition-colors"
+        title="查看详情"
+      >
+        <Info className="w-3 h-3 text-white" />
+      </button>
     </motion.button>
+  </div>
   )
 }

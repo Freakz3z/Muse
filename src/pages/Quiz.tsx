@@ -12,11 +12,11 @@ import {
 } from 'lucide-react'
 import { useAppStore } from '../store'
 import { Word } from '../types'
-import { defaultShortcuts } from '../types'
 import ProgressBar from '../components/ProgressBar'
 import { getProfileManager } from '../services/ai-core'
 import { personalizedContentLoader } from '../utils/personalized-content-helper'
 import { selectQuizWords, getSelectionReasons } from '../utils/smart-word-selector'
+import { useShortcuts } from '../hooks/useShortcuts'
 import type { GeneratedMemoryTip } from '../types/personalized-content'
 
 type QuizMode = 'choice' | 'spelling'
@@ -59,7 +59,7 @@ const recordQuizEvent = async (
 }
 
 export default function Quiz() {
-  const { words, records, settings, updateRecord } = useAppStore()
+  const { words, records, updateRecord } = useAppStore()
 
   const [mode, setMode] = useState<QuizMode | null>(null)
   const [quizWords, setQuizWords] = useState<Word[]>([])
@@ -81,6 +81,15 @@ export default function Quiz() {
   const [showMemoryTip, setShowMemoryTip] = useState(false)
 
   const currentWord = quizWords[currentIndex]
+
+  // 使用快捷键
+  useShortcuts({
+    nextQuestion: () => {
+      if (showResult) {
+        goToNext()
+      }
+    }
+  }, mode !== null && !quizComplete && showResult)
 
   const startQuiz = (selectedMode: QuizMode) => {
     setMode(selectedMode)
@@ -405,20 +414,8 @@ export default function Quiz() {
   }
 
   // 测验进行中界面
-  // 获取下一题的快捷键设置
-  const nextQuestionShortcut = settings.shortcuts?.nextQuestion || defaultShortcuts.nextQuestion
-
   return (
-    <div
-      className="max-w-2xl mx-auto"
-      onKeyDown={(e) => {
-        if (e.code === nextQuestionShortcut && showResult) {
-          e.preventDefault()
-          goToNext()
-        }
-      }}
-      tabIndex={0}
-    >
+    <div className="max-w-2xl mx-auto">
       {/* 进度和分数 */}
       <div className="flex items-center justify-between mb-6">
         <div className="text-gray-500 text-sm">

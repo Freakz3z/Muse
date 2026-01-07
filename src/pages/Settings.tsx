@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   User,
@@ -19,7 +19,7 @@ import {
   Settings as SettingsIcon,
   Cpu,
   Sparkles,
-  TestTube
+  TestTube,
 } from 'lucide-react'
 import { useAppStore } from '../store'
 import { ShortcutSettings, defaultShortcuts } from '../types'
@@ -30,9 +30,7 @@ import { updateAdaptiveConfig } from '../utils/spaced-repetition'
 
 export default function Settings() {
   const navigate = useNavigate()
-  const { settings, updateSettings, profile, updateProfile, createProfile } = useAppStore()
-  const [nickname, setNickname] = useState(profile?.nickname || '')
-  const [saved, setSaved] = useState(false)
+  const { settings, updateSettings } = useAppStore()
   
   // 弹窗状态
   const [showShortcutModal, setShowShortcutModal] = useState(false)
@@ -51,7 +49,6 @@ export default function Settings() {
     showAIAnalysis: 'AI 智能分析',
     showPersonalizedAI: '个性化 AI 内容',
     nextQuestion: '下一题',
-    rateEasy: '太简单',
     rateGood: '记住了',
     rateHard: '有点难',
     rateAgain: '忘记了',
@@ -62,7 +59,7 @@ export default function Settings() {
   const shortcutGroups: Record<string, string[]> = {
     learning: ['showAnswer', 'markKnown', 'markUnknown', 'playAudio', 'showAIAnalysis', 'showPersonalizedAI'],
     quiz: ['nextQuestion'],
-    review: ['rateEasy', 'rateGood', 'rateHard', 'rateAgain'],
+    review: ['rateGood', 'rateHard', 'rateAgain'],
     global: ['toggleFloating'],
   }
 
@@ -194,192 +191,71 @@ export default function Settings() {
     updateSettings({ shortcuts: defaultShortcuts })
   }
 
-  const handleSaveProfile = async () => {
-    if (!profile) {
-      await createProfile({
-        nickname: nickname || '学习者',
-        level: 'A2',
-        goal: 'daily',
-        interests: [],
-        streak: 0,
-        totalWords: 0,
-        lastStudyAt: Date.now(),
-      })
-    } else {
-      await updateProfile({ nickname })
-    }
-    
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
-
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <h1 className="text-2xl font-bold text-gray-800">设置</h1>
 
-      {/* 用户信息 */}
-      <div className="bg-white rounded-xl p-6 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <User className="w-5 h-5 text-gray-400" />
-          个人信息
-        </h2>
-        
-        <div className="space-y-4">
-          <div>
-            <label className="block text-gray-600 text-sm mb-2">昵称</label>
-            <input
-              type="text"
-              value={nickname}
-              onChange={(e) => setNickname(e.target.value)}
-              placeholder="输入你的昵称"
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-            />
+      {/* 个人资料入口 */}
+      <Link to="/profile" className="block">
+        <div className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-all card-hover group">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-50 rounded-xl">
+                <User className="w-6 h-6 text-blue-500" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-800">个人资料</h3>
+                <p className="text-gray-500 text-sm">查看和编辑你的个人信息</p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-colors" />
           </div>
-          
-          <button
-            onClick={handleSaveProfile}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 transition-colors"
-          >
-            <Save className="w-4 h-4" />
-            {saved ? '已保存' : '保存'}
-          </button>
+        </div>
+      </Link>
+
+      {/* 学习设置提示 */}
+      <div className="bg-gradient-to-r from-blue-50 to-violet-50 rounded-xl p-6 border border-blue-100">
+        <div className="flex items-start gap-4">
+          <div className="p-2 bg-blue-100 rounded-lg">
+            <Target className="w-6 h-6 text-blue-500" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-bold text-gray-800 mb-2">学习设置已迁移</h3>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              每日学习目标和快速复习数量的设置已移至
+              <Link to="/learning" className="text-blue-600 hover:text-blue-700 font-medium mx-1">学习中心</Link>
+              ，以便您在学习时快速调整。
+            </p>
+          </div>
         </div>
       </div>
 
-      {/* 学习设置 */}
+      {/* 自动播放设置 */}
       <div className="bg-white rounded-xl p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-          <Target className="w-5 h-5 text-gray-400" />
-          学习设置
+          <Volume2 className="w-5 h-5 text-gray-400" />
+          播放设置
         </h2>
 
-        <div className="space-y-6">
-          {/* 每日目标和快速复习数量 - 现代卡片式设计 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* 每日学习目标 */}
-            <div className="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 hover:border-blue-200 hover:shadow-md transition-all">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-gray-900 font-semibold">每日学习目标</h3>
-                  <p className="text-gray-500 text-sm mt-1">每天新学单词的数量</p>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                  <span className="text-blue-600 font-bold text-lg">📚</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <button
-                  onClick={() => updateSettings({ dailyGoal: Math.max(5, settings.dailyGoal - 5) })}
-                  className="w-10 h-10 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 text-gray-600 hover:text-blue-600 transition-all flex items-center justify-center"
-                >
-                  <span className="text-lg font-semibold">−</span>
-                </button>
-
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-gray-900">{settings.dailyGoal}</div>
-                  <div className="text-xs text-gray-500 mt-1">个/天</div>
-                </div>
-
-                <button
-                  onClick={() => updateSettings({ dailyGoal: Math.min(100, settings.dailyGoal + 5) })}
-                  className="w-10 h-10 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 text-gray-600 hover:text-blue-600 transition-all flex items-center justify-center"
-                >
-                  <span className="text-lg font-semibold">+</span>
-                </button>
-              </div>
-
-              {/* 预设选项 */}
-              <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
-                {[10, 20, 30, 50].map((value) => (
-                  <button
-                    key={value}
-                    onClick={() => updateSettings({ dailyGoal: value })}
-                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                      settings.dailyGoal === value
-                        ? 'bg-blue-500 text-white shadow-sm'
-                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
-                    }`}
-                  >
-                    {value}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* 快速复习数量 */}
-            <div className="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-5 hover:border-violet-200 hover:shadow-md transition-all">
-              <div className="flex items-start justify-between mb-4">
-                <div>
-                  <h3 className="text-gray-900 font-semibold">快速复习数量</h3>
-                  <p className="text-gray-500 text-sm mt-1">每次快速复习的单词数</p>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-violet-50 flex items-center justify-center">
-                  <span className="text-violet-600 font-bold text-lg">⚡</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <button
-                  onClick={() => updateSettings({ quickReviewLimit: Math.max(10, (settings.quickReviewLimit || 30) - 10) })}
-                  className="w-10 h-10 rounded-xl border border-gray-200 hover:border-violet-300 hover:bg-violet-50 text-gray-600 hover:text-violet-600 transition-all flex items-center justify-center"
-                >
-                  <span className="text-lg font-semibold">−</span>
-                </button>
-
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-gray-900">{settings.quickReviewLimit || 30}</div>
-                  <div className="text-xs text-gray-500 mt-1">个/次</div>
-                </div>
-
-                <button
-                  onClick={() => updateSettings({ quickReviewLimit: Math.min(100, (settings.quickReviewLimit || 30) + 10) })}
-                  className="w-10 h-10 rounded-xl border border-gray-200 hover:border-violet-300 hover:bg-violet-50 text-gray-600 hover:text-violet-600 transition-all flex items-center justify-center"
-                >
-                  <span className="text-lg font-semibold">+</span>
-                </button>
-              </div>
-
-              {/* 预设选项 */}
-              <div className="flex gap-2 mt-4 pt-4 border-t border-gray-100">
-                {[20, 30, 50, 100].map((value) => (
-                  <button
-                    key={value}
-                    onClick={() => updateSettings({ quickReviewLimit: value })}
-                    className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                      settings.quickReviewLimit === value
-                        ? 'bg-violet-500 text-white shadow-sm'
-                        : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
-                    }`}
-                  >
-                    {value}
-                  </button>
-                ))}
-              </div>
+        <div className="flex items-center justify-between p-4 rounded-xl border border-gray-200 bg-white">
+          <div className="flex items-center gap-3">
+            <Volume2 className="w-5 h-5 text-gray-400" />
+            <div>
+              <p className="font-medium text-gray-700">自动播放发音</p>
+              <p className="text-gray-400 text-sm">学习时自动播放单词发音</p>
             </div>
           </div>
-
-          {/* 自动播放 */}
-          <div className="flex items-center justify-between p-4 rounded-xl border border-gray-200 bg-white">
-            <div className="flex items-center gap-3">
-              <Volume2 className="w-5 h-5 text-gray-400" />
-              <div>
-                <p className="font-medium text-gray-700">自动播放发音</p>
-                <p className="text-gray-400 text-sm">学习时自动播放单词发音</p>
-              </div>
-            </div>
-            <button
-              onClick={() => updateSettings({ autoPlay: !settings.autoPlay })}
-              className={`w-12 h-6 rounded-full transition-colors ${
-                settings.autoPlay ? 'bg-blue-500' : 'bg-gray-300'
-              }`}
-            >
-              <motion.div
-                animate={{ x: settings.autoPlay ? 24 : 2 }}
-                className="w-5 h-5 bg-white rounded-full shadow"
-              />
-            </button>
-          </div>
+          <button
+            onClick={() => updateSettings({ autoPlay: !settings.autoPlay })}
+            className={`w-12 h-6 rounded-full transition-colors ${
+              settings.autoPlay ? 'bg-blue-500' : 'bg-gray-300'
+            }`}
+          >
+            <motion.div
+              animate={{ x: settings.autoPlay ? 24 : 2 }}
+              className="w-5 h-5 bg-white rounded-full shadow"
+            />
+          </button>
         </div>
       </div>
 
@@ -516,13 +392,6 @@ export default function Settings() {
                 <div>
                   <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">复习评分</h3>
                   <div className="space-y-1">
-                    <ShortcutItem
-                      label="太简单"
-                      currentValue={settings.shortcuts?.rateEasy || defaultShortcuts.rateEasy}
-                      isEditing={editingShortcut === 'rateEasy'}
-                      onEdit={() => setEditingShortcut('rateEasy')}
-                      onCancel={() => setEditingShortcut(null)}
-                    />
                     <ShortcutItem
                       label="记住了"
                       currentValue={settings.shortcuts?.rateGood || defaultShortcuts.rateGood}
@@ -848,7 +717,7 @@ export default function Settings() {
                   </button>
                 </div>
                 <p className="text-[10px] text-gray-400 text-center">
-                  💡 提示：配置完成后点击“测试并保存”以验证 API 是否可用。
+                  💡 提示：配置完成后点击"测试并保存"以验证 API 是否可用。
                 </p>
               </div>
             </motion.div>

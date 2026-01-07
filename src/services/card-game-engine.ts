@@ -8,13 +8,11 @@ import type {
   CardQuestion,
   CardGameConfig,
   CardGameResult,
-  ActiveBuff,
   Buff,
-  QuestionType,
 } from '../types/card-game'
-import { BuffType, BuffRarity } from '../types/card-game'
+import { BuffType, BuffRarity, QuestionType } from '../types/card-game'
 import type { Word } from '../types'
-import { drawMultipleCards, createBuff } from '../data/card-buffs'
+import { drawMultipleCards } from '../data/card-buffs'
 
 // ==================== 默认配置 ====================
 
@@ -212,7 +210,13 @@ export class CardGameEngine {
    * 生成选择题数据
    */
   private generateChoiceData(word: Word): CardQuestion['data'] {
-    const correctAnswer = word.meanings[0]?.translation || word.word
+    // 确保我们有有效的翻译
+    let correctAnswer = word.meanings[0]?.translation
+
+    // 如果没有翻译，使用word本身作为备选
+    if (!correctAnswer || correctAnswer === '待补充' || correctAnswer === '待翻译') {
+      correctAnswer = word.word
+    }
 
     // 生成干扰项
     const wrongAnswers = this.generateWrongAnswers(word, 3)
@@ -301,11 +305,13 @@ export class CardGameEngine {
           break
 
         case BuffType.REVEAL_ANSWER:
-          if (question.type === 'choice' && question.data.choices) {
+          if (question.type === 'choice' && question.data.choices && question.data.correctAnswer) {
             // 保留正确答案和1个干扰项
             const correct = question.data.correctAnswer
-            const wrong = question.data.choices?.filter(c => c !== correct)[0]
-            question.data.choices = [correct, wrong]
+            const wrongAnswers = question.data.choices.filter(c => c !== correct)
+            if (wrongAnswers.length > 0) {
+              question.data.choices = [correct, wrongAnswers[0]]
+            }
           }
           break
 
@@ -604,7 +610,17 @@ export class CardGameEngine {
       achievements.push('连击大师')
     }
 
-    if (this.state.accuracy >= 90) {
+    // 计算准确率
+    const accuracy =
+      this.state.correctCount + this.state.wrongCount > 0
+        ? Math.round(
+            (this.state.correctCount /
+              (this.state.correctCount + this.state.wrongCount)) *
+              100
+          )
+        : 0
+
+    if (accuracy >= 90) {
       achievements.push('完美表现')
     }
 
@@ -612,7 +628,12 @@ export class CardGameEngine {
       achievements.push('高分选手')
     }
 
-    if (this.state.rareCardsPulled >= 3) {
+    // 计算稀有卡牌数量
+    const rareCardsPulled = this.state.discardPile.filter(
+      c => c.rarity === BuffRarity.RARE || c.rarity === BuffRarity.EPIC || c.rarity === BuffRarity.LEGENDARY
+    ).length
+
+    if (rareCardsPulled >= 3) {
       achievements.push('卡牌收藏家')
     }
 

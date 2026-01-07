@@ -2,29 +2,27 @@ import { Outlet, NavLink, useLocation } from 'react-router-dom'
 import {
   Home,
   BookOpen,
-  RefreshCw,
   Library,
   BarChart3,
   Settings,
   Minus,
   Square,
   X,
-  Brain,
-  Search,
   Info,
-  Sparkles,
+  Dice5,
+  Brain,
+  User,
 } from 'lucide-react'
 import logo from '/Muse.png'
 
 const navItems = [
   {path: '/', icon: Home, label: '首页'},
-  {path: '/search', icon: Search, label: '搜索'},
-  {path: '/learn', icon: BookOpen, label: '学习'},
-  {path: '/review', icon: RefreshCw, label: '复习'},
-  {path: '/quiz', icon: Brain, label: '测验'},
+  {path: '/learning', icon: BookOpen, label: '学习'},
   {path: '/wordbook', icon: Library, label: '词库'},
+  {path: '/games', icon: Dice5, label: '游戏'},
+  {path: '/ai-profile', icon: Brain, label: '画像'},
   {path: '/statistics', icon: BarChart3, label: '统计'},
-  {path: '/ai-profile', icon: Sparkles, label: '画像'},
+  {path: '/profile', icon: User, label: '个人'},
   {path: '/settings', icon: Settings, label: '设置'},
   {path: '/about', icon: Info, label: '关于'},
 ]

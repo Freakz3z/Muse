@@ -10,6 +10,7 @@ import type { Buff } from '../../types/card-game'
 interface CardHandProps {
   cards: Buff[]
   onCardUse: (buffId: string) => void
+  onCardInfo?: (buff: Buff) => void
   disabled?: boolean
   maxSize?: number
 }
@@ -17,13 +18,14 @@ interface CardHandProps {
 export default function CardHand({
   cards,
   onCardUse,
+  onCardInfo,
   disabled = false,
   maxSize = 5,
 }: CardHandProps) {
   const displayCards = cards.slice(0, maxSize)
 
   return (
-    <div className="relative">
+    <div className="relative z-20">
       {/* 标题 */}
       <div className="flex items-center justify-between mb-3 px-2">
         <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wider">
@@ -34,8 +36,8 @@ export default function CardHand({
         </span>
       </div>
 
-      {/* 卡牌列表 */}
-      <div className="flex gap-3 overflow-x-auto pb-4 px-2">
+      {/* 卡牌列表 - 使用visible overflow允许tooltip显示 */}
+      <div className="flex gap-3 overflow-visible pb-4 px-2">
         <AnimatePresence>
           {displayCards.map((buff, index) => (
             <motion.div
@@ -49,11 +51,12 @@ export default function CardHand({
                 stiffness: 300,
                 damping: 25,
               }}
-              className="flex-shrink-0"
+              className="flex-shrink-0 relative"
             >
               <BuffCard
                 buff={buff}
                 onClick={() => onCardUse(buff.id)}
+                onInfoClick={() => onCardInfo?.(buff)}
                 disabled={disabled}
                 size="medium"
               />

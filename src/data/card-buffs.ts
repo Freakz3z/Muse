@@ -3,7 +3,8 @@
  * 包含所有可用的卡牌Buff定义
  */
 
-import type { Buff, BuffType, BuffRarity } from '../types/card-game'
+import type { Buff } from '../types/card-game'
+import { BuffType, BuffRarity } from '../types/card-game'
 
 // ==================== Buff定义 ====================
 
@@ -14,7 +15,7 @@ export const BUFF_DEFINITIONS: Record<BuffType, Omit<Buff, 'id'>> = {
     type: BuffType.DOUBLE_SCORE,
     name: '双倍积分',
     description: '接下来3道题积分翻倍',
-    rarity: 'rare',
+    rarity: BuffRarity.RARE,
     duration: 3,
     value: 2,
     icon: '💰',
@@ -25,7 +26,7 @@ export const BUFF_DEFINITIONS: Record<BuffType, Omit<Buff, 'id'>> = {
     type: BuffType.EXTRA_TIME,
     name: '时间加成',
     description: '增加30秒游戏时间',
-    rarity: 'common',
+    rarity: BuffRarity.COMMON,
     value: 30,
     icon: '⏰',
     isPositive: true,
@@ -35,7 +36,7 @@ export const BUFF_DEFINITIONS: Record<BuffType, Omit<Buff, 'id'>> = {
     type: BuffType.HINT,
     name: '智慧之光',
     description: '显示当前题目的首个提示',
-    rarity: 'common',
+    rarity: BuffRarity.COMMON,
     icon: '💡',
     isPositive: true,
   },
@@ -44,7 +45,7 @@ export const BUFF_DEFINITIONS: Record<BuffType, Omit<Buff, 'id'>> = {
     type: BuffType.SHIELD,
     name: '神圣护盾',
     description: '抵消一次错误回答',
-    rarity: 'rare',
+    rarity: BuffRarity.RARE,
     icon: '🛡️',
     isPositive: true,
   },
@@ -53,7 +54,7 @@ export const BUFF_DEFINITIONS: Record<BuffType, Omit<Buff, 'id'>> = {
     type: BuffType.LUCKY_CARD,
     name: '幸运卡',
     description: '跳过当前难题，不扣分',
-    rarity: 'epic',
+    rarity: BuffRarity.EPIC,
     icon: '🍀',
     isPositive: true,
   },
@@ -62,7 +63,7 @@ export const BUFF_DEFINITIONS: Record<BuffType, Omit<Buff, 'id'>> = {
     type: BuffType.COMBO_BOOST,
     name: '连击加速',
     description: '接下来5题连击收益+50%',
-    rarity: 'rare',
+    rarity: BuffRarity.RARE,
     duration: 5,
     value: 1.5,
     icon: '🔥',
@@ -73,7 +74,7 @@ export const BUFF_DEFINITIONS: Record<BuffType, Omit<Buff, 'id'>> = {
     type: BuffType.REVEAL_ANSWER,
     name: '透视之眼',
     description: '揭示2个错误选项（选择题）',
-    rarity: 'epic',
+    rarity: BuffRarity.EPIC,
     icon: '👁️',
     isPositive: true,
   },
@@ -84,7 +85,7 @@ export const BUFF_DEFINITIONS: Record<BuffType, Omit<Buff, 'id'>> = {
     type: BuffType.TIME_ATTACK,
     name: '时间紧迫',
     description: '当前题仅有30秒作答时间',
-    rarity: 'common',
+    rarity: BuffRarity.COMMON,
     duration: 1,
     value: 30,
     icon: '⚡',
@@ -95,7 +96,7 @@ export const BUFF_DEFINITIONS: Record<BuffType, Omit<Buff, 'id'>> = {
     type: BuffType.BLIND_MODE,
     name: '盲目模式',
     description: '隐藏50%的选项字母',
-    rarity: 'rare',
+    rarity: BuffRarity.RARE,
     duration: 2,
     icon: '🙈',
     isPositive: false,
@@ -105,7 +106,7 @@ export const BUFF_DEFINITIONS: Record<BuffType, Omit<Buff, 'id'>> = {
     type: BuffType.SHUFFLE,
     name: '混乱诅咒',
     description: '选项位置每秒随机变换',
-    rarity: 'epic',
+    rarity: BuffRarity.EPIC,
     duration: 1,
     icon: '🌀',
     isPositive: false,
@@ -115,7 +116,7 @@ export const BUFF_DEFINITIONS: Record<BuffType, Omit<Buff, 'id'>> = {
     type: BuffType.HARD_MODE,
     name: '困难挑战',
     description: '接下来3题无任何提示',
-    rarity: 'rare',
+    rarity: BuffRarity.RARE,
     duration: 3,
     icon: '💀',
     isPositive: false,

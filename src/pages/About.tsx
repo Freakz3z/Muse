@@ -114,7 +114,6 @@ function parseChangelog(): VersionInfo[] {
 
         // 智能分类：根据条目内容本身判断是功能还是修复
         // 即使章节标题不包含"修复"关键词,如果条目本身是修复类,也归入fixes
-        let targetSection = currentSection
         const fixKeywords = ['修复', '修复', 'fix', 'fixing', 'bug', '除零', '防止']
         const isFix = fixKeywords.some(keyword => simplifiedItem.toLowerCase().includes(keyword.toLowerCase()))
 
@@ -374,7 +373,7 @@ export default function About() {
           <div className="flex-1 space-y-4">
             <div>
               <h1 className="text-3xl font-bold text-gray-800 mb-2">Muse</h1>
-              <p className="text-gray-500">v1.6.2</p>
+              <p className="text-gray-500">v1.6.3</p>
             </div>
 
             <p className="text-gray-600 leading-relaxed">
