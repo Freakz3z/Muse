@@ -29,8 +29,9 @@ interface LocalForage {
 }
 
 const PROFILE_STORAGE_KEY = 'ai_learner_profile';
-const MIN_EVENTS_FOR_UPDATE = 5; // 最少收集5个事件后才进行AI更新
+const MIN_EVENTS_FOR_UPDATE = 10; // 增加到10个事件，减少更新频率
 const MAX_EVENTS = 100; // 最多保留100个事件（用于滑动窗口）
+const MIN_UPDATE_INTERVAL = 60000; // 最小更新间隔：60秒
 
 interface ProfileStorage {
   profile: AILearnerProfile;
@@ -44,6 +45,7 @@ interface ProfileStorage {
 export class ProfileManager {
   private storage: LocalForage;
   private cache: AILearnerProfile | null = null;
+  private updateInProgress: boolean = false; // 防止重复更新
 
   constructor() {
     this.storage = localforage.createInstance({
@@ -95,6 +97,7 @@ export class ProfileManager {
    * 记录学习事件
    *
    * 事件会被累积，达到阈值后触发AI更新
+   * 优化：异步触发更新，不阻塞UI
    */
   async recordEvent(event: LearningEvent): Promise<void> {
     try {
@@ -114,8 +117,16 @@ export class ProfileManager {
       console.log('[ProfileManager] Recorded event, pending count:', data.pendingEvents.length);
 
       // 检查是否需要触发AI更新
-      if (data.pendingEvents.length >= MIN_EVENTS_FOR_UPDATE) {
-        await this.triggerAIUpdate(data);
+      const shouldUpdate =
+        data.pendingEvents.length >= MIN_EVENTS_FOR_UPDATE &&
+        !this.updateInProgress &&
+        (Date.now() - data.lastAIUpdate) >= MIN_UPDATE_INTERVAL;
+
+      if (shouldUpdate) {
+        // 异步触发更新，不阻塞UI
+        this.triggerAIUpdate(data).catch(error => {
+          console.error('[ProfileManager] Background update failed:', error);
+        });
       }
     } catch (error) {
       console.error('[ProfileManager] Failed to record event:', error);
@@ -125,10 +136,17 @@ export class ProfileManager {
   /**
    * 触发AI更新画像
    *
-   * 这是最核心的功能：用AI分析学习事件，更新用户画像
+   * 优化：异步执行，不阻塞UI
    */
   private async triggerAIUpdate(storageData: ProfileStorage): Promise<void> {
+    // 防止重复更新
+    if (this.updateInProgress) {
+      console.log('[ProfileManager] Update already in progress, skipping...');
+      return;
+    }
+
     console.log('[ProfileManager] Triggering AI profile update...');
+    this.updateInProgress = true;
 
     try {
       // 动态导入ProfileUpdater避免循环依赖
@@ -141,18 +159,24 @@ export class ProfileManager {
         storageData.pendingEvents
       );
 
-      if (result.success) {
-        // 更新画像
-        storageData.profile = {
-          ...storageData.profile,
-          ...result.changes.reduce((acc, change) => ({ ...acc, [change.dimension]: change.after }), {}),
-          version: storageData.profile.version + 1,
-          lastUpdated: Date.now(),
-        };
+      if (result.success && result.changes.length > 0) {
+        // 正确地应用所有更改
+        let updatedProfile = { ...storageData.profile };
+
+        for (const change of result.changes) {
+          console.log('[ProfileManager] Applying change:', change.dimension);
+          (updatedProfile as any)[change.dimension] = change.after;
+        }
+
+        // 更新版本和时间戳
+        updatedProfile.version = storageData.profile.version + 1;
+        updatedProfile.lastUpdated = Date.now();
+
+        storageData.profile = updatedProfile;
 
         console.log('[ProfileManager] Profile updated successfully:', result.updatedDimensions);
       } else {
-        console.warn('[ProfileManager] Profile update failed, keeping events for retry');
+        console.warn('[ProfileManager] Profile update failed or no changes, keeping events for retry');
         // 如果更新失败，保留事件稍后重试
         await this.storage.setItem(PROFILE_STORAGE_KEY, storageData);
         return;
@@ -162,6 +186,8 @@ export class ProfileManager {
       // 出错时也保留事件
       await this.storage.setItem(PROFILE_STORAGE_KEY, storageData);
       return;
+    } finally {
+      this.updateInProgress = false;
     }
 
     // 清空已处理的事件
